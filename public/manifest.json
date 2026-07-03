@@ -1,0 +1,9 @@
+{
+  "short_name": "D-FARM POS",
+  "name": "D-FARM POS",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#06122c",
+  "background_color": "#f3f6fb",
+  "icons": []
+}

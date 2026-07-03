@@ -1,0 +1,39 @@
+{
+  "name": "dfarm-pos",
+  "version": "1.0.0",
+  "description": "D-FARM POS React application",
+  "keywords": [
+    "pos",
+    "react",
+    "dfarm"
+  ],
+  "main": "src/index.js",
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-scripts": "^5.0.0",
+    "xlsx": "0.18.5",
+    "firebase": "12.13.0",
+    "dexie": "4.4.3",
+    "html5-qrcode": "2.3.8"
+  },
+  "devDependencies": {
+    "@types/react": "19.0.0",
+    "@types/react-dom": "19.0.0",
+    "loader-utils": "3.2.1",
+    "typescript": "5.7.2"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject"
+  },
+  "browserslist": [
+    ">0.2%",
+    "not dead",
+    "not ie <= 11",
+    "not op_mini all"
+  ],
+  "private": false
+}

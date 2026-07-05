@@ -1554,3 +1554,70 @@ th button {
     left: 14px;
   }
 }
+
+/* Requested mobile table alignment fixes */
+.line-add-button {
+  display: inline-grid !important;
+  place-items: center !important;
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  vertical-align: middle;
+}
+
+.pos-line-table th:first-child,
+.pos-line-table td:first-child {
+  width: 58px;
+  min-width: 58px;
+  text-align: center;
+}
+
+.pos-line-table td:first-child {
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+
+.sales-table th:nth-child(2),
+.sales-table td:nth-child(2),
+.summary-table th:nth-child(3),
+.summary-table td:nth-child(3) {
+  min-width: 180px;
+  max-width: none;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  line-height: 1.35;
+}
+
+@media (max-width: 640px) {
+  .line-add-button {
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    padding: 0 !important;
+    font-size: 20px !important;
+  }
+
+  .pos-line-table {
+    min-width: 720px !important;
+  }
+
+  .sales-table,
+  .summary-table {
+    min-width: 1180px !important;
+  }
+
+  .sales-table th:nth-child(2),
+  .sales-table td:nth-child(2),
+  .summary-table th:nth-child(3),
+  .summary-table td:nth-child(3) {
+    min-width: 210px;
+    white-space: normal;
+    word-break: keep-all;
+    overflow-wrap: normal;
+  }
+}

@@ -32,9 +32,20 @@ import {
 } from "./styles/uiStyles";
 
 const SALE_POPUP_STATE_KEY = "dfarm_sale_popup_state";
+const APP_LOCATION_STATE_KEY = "dfarm_app_location_state";
+const APP_PAGE_KEYS = ["pos", "history", "summary", "price", "users"];
+
+function getSavedAppPage() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(APP_LOCATION_STATE_KEY) || "{}");
+    return APP_PAGE_KEYS.includes(saved.page) ? saved.page : "pos";
+  } catch {
+    return "pos";
+  }
+}
 
 export default function App() {
-  const [page, setPage] = React.useState("pos");
+  const [page, setPage] = React.useState(getSavedAppPage);
 
   const [products, setProducts] = React.useState([]);
 
@@ -140,6 +151,57 @@ export default function App() {
 
   const popupRestoredRef = React.useRef(false);
 
+  const scrollRestoreRef = React.useRef(false);
+
+  React.useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(APP_LOCATION_STATE_KEY) || "{}");
+      localStorage.setItem(APP_LOCATION_STATE_KEY, JSON.stringify({
+        ...saved,
+        page,
+        scrollByPage: saved.scrollByPage || {},
+      }));
+    } catch (err) {
+      console.log(err);
+    }
+  }, [page]);
+
+  React.useEffect(() => {
+    if (!isLogin) return undefined;
+    const restoreScroll = () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(APP_LOCATION_STATE_KEY) || "{}");
+        const y = Number(saved.scrollByPage?.[page] || 0);
+        window.scrollTo(0, y);
+      } catch (err) {
+        console.log(err);
+      }
+    };
+    window.setTimeout(restoreScroll, 120);
+    scrollRestoreRef.current = true;
+    return undefined;
+  }, [isLogin, page]);
+
+  React.useEffect(() => {
+    if (!isLogin) return undefined;
+    const saveScroll = () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(APP_LOCATION_STATE_KEY) || "{}");
+        const scrollByPage = { ...(saved.scrollByPage || {}), [page]: window.scrollY || 0 };
+        localStorage.setItem(APP_LOCATION_STATE_KEY, JSON.stringify({ ...saved, page, scrollByPage }));
+      } catch (err) {
+        console.log(err);
+      }
+    };
+    window.addEventListener("scroll", saveScroll, { passive: true });
+    window.addEventListener("beforeunload", saveScroll);
+    saveScroll();
+    return () => {
+      saveScroll();
+      window.removeEventListener("scroll", saveScroll);
+      window.removeEventListener("beforeunload", saveScroll);
+    };
+  }, [isLogin, page]);
   React.useEffect(() => {
     if (popupRestoredRef.current) return;
     const savedPopup = localStorage.getItem(SALE_POPUP_STATE_KEY);

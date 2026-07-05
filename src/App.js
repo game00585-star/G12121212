@@ -31,6 +31,8 @@ import {
   tdStyle,
 } from "./styles/uiStyles";
 
+const SALE_POPUP_STATE_KEY = "dfarm_sale_popup_state";
+
 export default function App() {
   const [page, setPage] = React.useState("pos");
 
@@ -136,6 +138,56 @@ export default function App() {
 
   const searchInputRef = React.useRef(null);
 
+  const popupRestoredRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (popupRestoredRef.current) return;
+    const savedPopup = localStorage.getItem(SALE_POPUP_STATE_KEY);
+    if (!savedPopup) {
+      popupRestoredRef.current = true;
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(savedPopup);
+      if (!parsed?.selectedItem) {
+        popupRestoredRef.current = true;
+        return;
+      }
+      const restoredProduct = products.find((item) =>
+        String(item.id || item.barcode || "") === String(parsed.selectedItem.id || parsed.selectedItem.barcode || "")
+      ) || parsed.selectedItem;
+      setSelectedItem(restoredProduct);
+      setSellPrice(parsed.sellPrice ?? restoredProduct.price ?? "");
+      setModalQty(parsed.modalQty ?? "");
+      setDiscountPercent(parsed.discountPercent ?? "");
+      setPromoType(parsed.promoType || "none");
+      setBuyQty(parsed.buyQty ?? "");
+      setFreeQty(parsed.freeQty ?? "");
+    } catch (err) {
+      console.log(err);
+      localStorage.removeItem(SALE_POPUP_STATE_KEY);
+    }
+    popupRestoredRef.current = true;
+  }, [products]);
+
+  React.useEffect(() => {
+    if (!popupRestoredRef.current) return;
+    if (!selectedItem) {
+      localStorage.removeItem(SALE_POPUP_STATE_KEY);
+      return;
+    }
+
+    localStorage.setItem(SALE_POPUP_STATE_KEY, JSON.stringify({
+      selectedItem,
+      sellPrice,
+      modalQty,
+      discountPercent,
+      promoType,
+      buyQty,
+      freeQty,
+    }));
+  }, [selectedItem, sellPrice, modalQty, discountPercent, promoType, buyQty, freeQty]);
   const sanitizeUserForSession = (user) => ({
     id: user.id,
     username: user.username,
@@ -1048,6 +1100,118 @@ export default function App() {
 
     setSavingBill(false);
   };
+  const openReceiptPrintWindow = ({ billNo, date, branchName, employee, items, isCopy = false }) => {
+    const receiptWindow = window.open("", "", "width=350,height=700");
+    if (!receiptWindow) {
+      alert("Browser บล็อก Popup");
+      return false;
+    }
+
+    const beforeDiscountTotal = items.reduce((sum, item) => sum + Number(item.beforeDiscount || 0), 0);
+    const netTotal = items.reduce((sum, item) => sum + Number(item.netTotal || 0), 0);
+    const totalDiscount = beforeDiscountTotal - netTotal;
+    const itemRows = items.map((item) => `
+      <div>
+        <div class="row"><div>${item.product}</div><div>${Number(item.netTotal || 0).toFixed(2)}</div></div>
+        <div style="padding-left:10px;">${Number(item.soldQty || 0).toFixed(2)} x ${Number(item.price || 0).toFixed(2)}</div>
+        ${item.promo && item.promo !== "-" ? `<div style="padding-left:10px;">โปร ${item.promo}</div>` : ""}
+      </div>
+    `).join("");
+
+    const receiptHTML = `
+      <html>
+      <head>
+        <title>${isCopy ? "Reprint" : "Receipt"}-${billNo}</title>
+        <style>
+          @media print { @page { size:80mm auto; margin:0; } body{ width:72mm; margin:0 auto; padding:6px; font-family:Tahoma; font-size:12px; color:#000; } }
+          body{ width:72mm; margin:0 auto; padding:6px; font-family:Tahoma; font-size:12px; color:#000; }
+          .center{text-align:center;line-height:1.8}.line{border-top:2px dashed #000;margin:10px 0}.row{display:flex;justify-content:space-between;gap:8px;margin-bottom:4px}h2{margin:0;font-size:20px}
+        </style>
+      </head>
+      <body>
+        <div class="line"></div>
+        <div class="center"><h2>D FARM Food Retail</h2><div>Tax ID 0105561080724</div>${isCopy ? "<b>REPRINT</b>" : ""}</div>
+        <div class="line"></div>
+        <div>สาขา : ${branchName || "-"}</div>
+        <div>Date : ${date || "-"}</div>
+        <div>เลขที่บิล : ${billNo || "-"}</div>
+        <div>User : ${employee || "-"}</div>
+        <div class="line"></div>
+        ${itemRows}
+        <div class="line"></div>
+        <div class="row"><b>รวมก่อนลด</b><b>${beforeDiscountTotal.toFixed(2)}</b></div>
+        <div class="row"><b>ส่วนลดรวม</b><b>${totalDiscount.toFixed(2)}</b></div>
+        <div class="row"><b>รวมหลังลด</b><b>${netTotal.toFixed(2)}</b></div>
+        <div class="line"></div>
+        <div class="center">ขอบคุณที่ใช้บริการ</div>
+        <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}</script>
+      </body>
+      </html>
+    `;
+
+    receiptWindow.document.write(receiptHTML);
+    receiptWindow.document.close();
+    return true;
+  };
+
+  const mapSaleItemForReceipt = (item) => {
+    const row = calcSaleRow(item);
+    return {
+      product: getField(item, fieldNames.product),
+      soldQty: row.soldQty,
+      price: numberField(item, ["ราคา", "เธฃเธฒเธเธฒ", "เน€เธเธเน€เธเธ’เน€เธยเน€เธเธ’"]),
+      promo: formatPromo(item),
+      beforeDiscount: row.beforeDiscount,
+      netTotal: row.netTotal,
+    };
+  };
+
+  const reprintBill = (bill) => {
+    if (!bill || bill.length === 0) return;
+    const first = bill[0];
+    openReceiptPrintWindow({
+      billNo: getField(first, fieldNames.billNo),
+      date: new Date(getField(first, fieldNames.date)).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" }),
+      branchName: getField(first, fieldNames.branch),
+      employee: getField(first, fieldNames.employee),
+      items: bill.map(mapSaleItemForReceipt),
+      isCopy: true,
+    });
+  };
+
+  const openDailySummaryPrint = (printTitle) => {
+    const reportWindow = window.open("", "", "width=1100,height=800");
+    if (!reportWindow) {
+      alert("Browser บล็อก Popup");
+      return;
+    }
+    const totals = summaryResult.reduce((acc, item) => ({
+      soldQty: acc.soldQty + Number(item.soldQty || 0),
+      freeQty: acc.freeQty + Number(item.freeQty || 0),
+      totalQty: acc.totalQty + Number(item.totalQty || 0),
+      beforeDiscount: acc.beforeDiscount + Number(item.beforeDiscount || 0),
+      discountBaht: acc.discountBaht + Number(item.discountBaht || 0),
+      netTotal: acc.netTotal + Number(item.netTotal || 0),
+    }), { soldQty: 0, freeQty: 0, totalQty: 0, beforeDiscount: 0, discountBaht: 0, netTotal: 0 });
+    const rows = summaryResult.map((item) => `<tr><td>${item.branch || ""}</td><td>${item.barcode || ""}</td><td>${item.product || ""}</td><td>${item.promo || "-"}</td><td>${Number(item.soldQty || 0)}</td><td>${Number(item.freeQty || 0)}</td><td>${Number(item.totalQty || 0)}</td><td>${Number(item.beforeDiscount || 0).toFixed(2)}</td><td>${Number(item.discountBaht || 0).toFixed(2)}</td><td>${Number(item.netTotal || 0).toFixed(2)}</td></tr>`).join("");
+    const reportHTML = `
+      <html><head><title>${printTitle}</title>
+      <style>@page{size:A4 landscape;margin:10mm}body{font-family:Tahoma,Arial,sans-serif;color:#000}h2{margin:0 0 6px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #999;padding:6px;text-align:left}th,tfoot td{background:#fff5bf;font-weight:900}.meta{margin-bottom:12px}.right{text-align:right}</style>
+      </head><body>
+      <h2>สรุปยอดขายรายวัน</h2>
+      <div class="meta">วันที่ ${summaryStartDate || "ทั้งหมด"} ถึง ${summaryEndDate || "ทั้งหมด"} | สาขา ${summaryBranch || "ทุกสาขา"}</div>
+      <table><thead><tr><th>สาขา</th><th>Barcode</th><th>สินค้า</th><th>โปร</th><th>ขายจริง</th><th>แถม</th><th>จำนวนรวม</th><th>รวมก่อนลด</th><th>ส่วนลด (บาท)</th><th>รวมสุทธิ</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><td colspan="4">รวมทั้งหมด</td><td>${totals.soldQty}</td><td>${totals.freeQty}</td><td>${totals.totalQty}</td><td>${totals.beforeDiscount.toFixed(2)}</td><td>${totals.discountBaht.toFixed(2)}</td><td>${totals.netTotal.toFixed(2)}</td></tr></tfoot></table>
+      <script>window.onload=function(){window.print();}</script>
+      </body></html>
+    `;
+    reportWindow.document.write(reportHTML);
+    reportWindow.document.close();
+  };
+
+  const exportDailySummaryPdf = () => openDailySummaryPrint(`summary-${summaryStartDate || "all"}-${summaryEndDate || "all"}`);
+  const printDailySummary = () => openDailySummaryPrint("print-daily-summary");
   const approveCancelBill = async () => {
     if (!cancelBillNo) {
       alert("ไม่พบบิล");
@@ -1295,6 +1459,7 @@ export default function App() {
           cancelPassword={cancelPassword}
           setCancelPassword={setCancelPassword}
           approveCancelBill={approveCancelBill}
+          reprintBill={reprintBill}
         />
       )}
       {page === "summary" && (
@@ -1308,6 +1473,8 @@ export default function App() {
           setSummaryBranch={setSummaryBranch}
           salesHistory={salesHistory}
           exportSummaryExcel={exportSummaryExcel}
+          exportDailySummaryPdf={exportDailySummaryPdf}
+          printDailySummary={printDailySummary}
           summaryResult={summaryResult}
         />
       )}

@@ -32,9 +32,18 @@ import {
 } from "./styles/uiStyles";
 
 const SALE_POPUP_STATE_KEY = "dfarm_sale_popup_state";
+const CART_STATE_KEY = "dfarm_cart_state";
 const APP_LOCATION_STATE_KEY = "dfarm_app_location_state";
 const APP_PAGE_KEYS = ["pos", "history", "summary", "price", "users"];
 
+function getSavedCart() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CART_STATE_KEY) || "[]");
+    return Array.isArray(saved) ? saved : [];
+  } catch {
+    return [];
+  }
+}
 function getSavedAppPage() {
   try {
     const saved = JSON.parse(localStorage.getItem(APP_LOCATION_STATE_KEY) || "{}");
@@ -49,7 +58,7 @@ export default function App() {
 
   const [products, setProducts] = React.useState([]);
 
-  const [cart, setCart] = React.useState([]);
+  const [cart, setCart] = React.useState(getSavedCart);
 
   const [search, setSearch] = React.useState("");
 
@@ -250,6 +259,13 @@ export default function App() {
       freeQty,
     }));
   }, [selectedItem, sellPrice, modalQty, discountPercent, promoType, buyQty, freeQty]);
+  React.useEffect(() => {
+    if (cart.length === 0) {
+      localStorage.removeItem(CART_STATE_KEY);
+      return;
+    }
+    localStorage.setItem(CART_STATE_KEY, JSON.stringify(cart));
+  }, [cart]);
   const sanitizeUserForSession = (user) => ({
     id: user.id,
     username: user.username,

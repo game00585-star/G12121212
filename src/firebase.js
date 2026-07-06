@@ -11,6 +11,7 @@ import {
   deleteDoc,
   updateDoc,
   onSnapshot,
+  runTransaction,
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -49,4 +50,5 @@ export {
   deleteDoc,
   updateDoc,
   onSnapshot,
+  runTransaction,
 };

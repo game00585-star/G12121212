@@ -14,6 +14,7 @@ import {
   doc,
   deleteDoc,
   updateDoc,
+  runTransaction,
 } from "./firebase";
 
 import Price from "./pages/Price";
@@ -36,6 +37,27 @@ const CART_STATE_KEY = "dfarm_cart_state";
 const APP_LOCATION_STATE_KEY = "dfarm_app_location_state";
 const APP_PAGE_KEYS = ["pos", "history", "summary", "price", "users"];
 
+function getClientSecurityContext() {
+  return {
+    ipAddress: "client-side-unavailable",
+    userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+  };
+}
+
+function isSecureRuntime() {
+  if (typeof window === "undefined") return true;
+  const host = window.location.hostname;
+  return window.location.protocol === "https:" || host === "localhost" || host === "127.0.0.1" || host === "";
+}
+
+function enforceProductionHttps() {
+  if (typeof window === "undefined") return;
+  const host = window.location.hostname;
+  const isLocal = host === "localhost" || host === "127.0.0.1" || host === "";
+  if (process.env.NODE_ENV === "production" && window.location.protocol === "http:" && !isLocal) {
+    window.location.replace(`https://${window.location.host}${window.location.pathname}${window.location.search}`);
+  }
+}
 function getSavedCart() {
   try {
     const saved = JSON.parse(localStorage.getItem(CART_STATE_KEY) || "[]");
@@ -54,6 +76,8 @@ function getSavedAppPage() {
 }
 
 export default function App() {
+  enforceProductionHttps();
+
   const [page, setPage] = React.useState(getSavedAppPage);
 
   const [products, setProducts] = React.useState([]);
@@ -465,7 +489,66 @@ export default function App() {
     setOfflineSyncing(false);
   };
 
-  const login = () => {
+  const writeAuditLog = async ({ action, targetType = "system", targetId = "", oldData = null, newData = null, userOverride = null }) => {
+    const actor = userOverride || currentUser || {};
+    const security = getClientSecurityContext();
+    const logData = {
+      userId: actor.id || "",
+      username: actor.username || username || "",
+      role: actor.role || role || "",
+      branch: actor.branch || branch || "",
+      action,
+      targetType,
+      targetId: String(targetId || ""),
+      oldData,
+      newData,
+      ipAddress: security.ipAddress,
+      userAgent: security.userAgent,
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      await addDoc(collection(db, "auditLogs"), logData);
+    } catch (err) {
+      console.log(err);
+      const pendingLogs = JSON.parse(localStorage.getItem("pending_audit_logs") || "[]");
+      pendingLogs.push(logData);
+      localStorage.setItem("pending_audit_logs", JSON.stringify(pendingLogs));
+    }
+  };
+
+  const getNextServerBillNo = async (branchName) => {
+    const now = new Date();
+    const dateKey = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Bangkok",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(now).replace(/-/g, "");
+    const safeBranch = String(branchName || "BRANCH").trim() || "BRANCH";
+    const counterId = `${safeBranch}_${dateKey}`.replace(/[\/#?\[\]]/g, "_");
+    const counterRef = doc(db, "billCounters", counterId);
+
+    return runTransaction(db, async (transaction) => {
+      const counterSnap = await transaction.get(counterRef);
+      const lastNumber = counterSnap.exists() ? Number(counterSnap.data().lastNumber || 0) : 0;
+      const nextNumber = lastNumber + 1;
+      transaction.set(counterRef, {
+        branch: safeBranch,
+        dateKey,
+        lastNumber: nextNumber,
+        updatedAt: now.toISOString(),
+      }, { merge: true });
+      return `${safeBranch}-${dateKey}-${String(nextNumber).padStart(5, "0")}`;
+    });
+  };
+  const login = async () => {
+    if (!isSecureRuntime()) {
+      await writeAuditLog({ action: "LOGIN_BLOCKED_INSECURE", targetType: "auth", userOverride: { username } });
+      alert("Production ต้องใช้งานผ่าน HTTPS เท่านั้น");
+      return;
+    }
+
     const now = Date.now();
 
     if (lockUntil > now) {
@@ -489,6 +572,7 @@ export default function App() {
         return;
       }
 
+      await writeAuditLog({ action: "LOGIN_FAILED", targetType: "auth", userOverride: { username } });
       alert("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
       return;
     }
@@ -505,9 +589,10 @@ export default function App() {
 
     localStorage.setItem("user", JSON.stringify(sessionUser));
     localStorage.setItem("last_activity_at", String(Date.now()));
+    await writeAuditLog({ action: "LOGIN_SUCCESS", targetType: "auth", targetId: sessionUser.id, newData: sessionUser, userOverride: sessionUser });
   };
 
-  const logout = () => {
+  const logout = async () => {
     setIsLogin(false);
     setUsername("");
     setPassword("");
@@ -515,6 +600,7 @@ export default function App() {
     setCurrentUser(null);
     localStorage.removeItem("user");
     localStorage.removeItem("last_activity_at");
+    await writeAuditLog({ action: "LOGOUT", targetType: "auth", targetId: currentUser?.id || "", oldData: currentUser });
   };
 
   React.useEffect(() => {
@@ -590,6 +676,8 @@ export default function App() {
     try {
       await addDoc(collection(db, "users"), newUser);
 
+      await writeAuditLog({ action: "USER_CREATE", targetType: "user", newData: newUser });
+
       await loadUsers();
 
       setNewUsername("");
@@ -614,7 +702,11 @@ export default function App() {
     if (!confirmDelete) return;
 
     try {
+      const deletedUser = users.find((user) => String(user.id) === String(id)) || null;
+
       await deleteDoc(doc(db, "users", id));
+
+      await writeAuditLog({ action: "USER_DELETE", targetType: "user", targetId: id, oldData: deletedUser });
 
       await loadUsers();
 
@@ -645,6 +737,8 @@ export default function App() {
       await updateDoc(userRef, {
         password: String(newResetPassword),
       });
+
+      await writeAuditLog({ action: "USER_PASSWORD_RESET", targetType: "user", targetId: resetUserId, newData: { passwordChanged: true } });
 
       await loadUsers();
 
@@ -753,46 +847,35 @@ export default function App() {
       return;
     }
 
+    const totalQty = qty;
+    const safeBuyQty = Number(buyQty || 0);
+    const safeFreeQty = Number(freeQty || 0);
+    const setSize = safeBuyQty + safeFreeQty;
+    const paidQty =
+      promoType === "custom" && safeBuyQty > 0 && setSize > 0
+        ? Math.floor(totalQty / setSize) * safeBuyQty +
+          Math.min(totalQty % setSize, safeBuyQty)
+        : totalQty;
+    const freeQtyCalc = promoType === "custom" ? totalQty - paidQty : 0;
+    const newItem = {
+      barcode: selectedItem.barcode,
+      name: selectedItem.name,
+      qty: paidQty,
+      totalQty,
+      freeQty: freeQtyCalc,
+      price,
+      promoText: promoType === "custom" ? `${buyQty}+${freeQty}` : "-",
+      promoType,
+      buyQty,
+      freeQty,
+      discountPercent: Number(discountPercent || 0),
+      total: paidQty * price * (1 - Number(discountPercent || 0) / 100),
+    };
+
     setCart((prev) => {
-      const totalQty = qty;
-
-      const safeBuyQty = Number(buyQty || 0);
-      const safeFreeQty = Number(freeQty || 0);
-      const setSize = safeBuyQty + safeFreeQty;
-      const paidQty =
-        promoType === "custom" && safeBuyQty > 0 && setSize > 0
-          ? Math.floor(totalQty / setSize) * safeBuyQty +
-            Math.min(totalQty % setSize, safeBuyQty)
-          : totalQty;
-
-      const freeQtyCalc = promoType === "custom" ? totalQty - paidQty : 0;
-
-      return [
-        ...prev,
-        {
-          barcode: selectedItem.barcode,
-
-          name: selectedItem.name,
-
-          qty: paidQty,
-
-          totalQty,
-
-          freeQty: freeQtyCalc,
-
-          price,
-
-          promoText: promoType === "custom" ? `${buyQty}+${freeQty}` : "-",
-
-          promoType,
-          buyQty,
-          freeQty,
-
-          discountPercent: Number(discountPercent || 0),
-
-          total: paidQty * price * (1 - Number(discountPercent || 0) / 100),
-        },
-      ];
+      const nextCart = [...prev, newItem];
+      writeAuditLog({ action: "DRAFT_BILL_EDIT", targetType: "cart", oldData: prev, newData: nextCart });
+      return nextCart;
     });
 
     setSellPrice("");
@@ -829,7 +912,15 @@ export default function App() {
       return;
     }
 
-    const billNo = Date.now();
+    if (isOffline) {
+      alert("ต้องออนไลน์เพื่อออกเลขบิลจาก Server");
+
+      setSavingBill(false);
+
+      return;
+    }
+
+    const billNo = await getNextServerBillNo(branch);
 
     const offlineId = `${billNo}_${Date.now()}`;
 
@@ -866,7 +957,7 @@ export default function App() {
 
       รวม: item.total,
 
-      สถานะ: "ขายปกติ",
+      สถานะ: "completed",
 
       เวลายกเลิก: "",
     }));
@@ -1155,6 +1246,10 @@ export default function App() {
 
       receiptWindow.document.close();
 
+      await writeAuditLog({ action: "CREATE_CASH_BILL", targetType: "bill", targetId: billNo, newData: saleData });
+
+      await writeAuditLog({ action: "PRINT_BILL", targetType: "bill", targetId: billNo, newData: { billNo } });
+
       setCart([]);
 
       setCash("");
@@ -1247,14 +1342,16 @@ export default function App() {
   const reprintBill = (bill) => {
     if (!bill || bill.length === 0) return;
     const first = bill[0];
+    const reprintBillNo = getField(first, fieldNames.billNo);
     openReceiptPrintWindow({
-      billNo: getField(first, fieldNames.billNo),
+      billNo: reprintBillNo,
       date: new Date(getField(first, fieldNames.date)).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" }),
       branchName: getField(first, fieldNames.branch),
       employee: getField(first, fieldNames.employee),
       items: bill.map(mapSaleItemForReceipt),
       isCopy: true,
     });
+    writeAuditLog({ action: "REPRINT_BILL", targetType: "bill", targetId: reprintBillNo, newData: { billNo: reprintBillNo } });
   };
 
   const openDailySummaryPrint = (printTitle) => {
@@ -1292,8 +1389,7 @@ export default function App() {
   const printDailySummary = () => openDailySummaryPrint("print-daily-summary");
   const approveCancelBill = async () => {
     if (!cancelBillNo) {
-      alert("ไม่พบบิล");
-
+      alert("Bill not found");
       return;
     }
 
@@ -1316,25 +1412,57 @@ export default function App() {
     }
 
     if (!approver) {
-      alert("กรุณาใช้ Password Manager ประจำสาขา");
-
+      alert("Please use branch Manager password");
       return;
     }
 
     const billItems = salesHistory.filter(
-      (item) => String(item["เลขบิล"]) === String(cancelBillNo)
+      (item) => String(getField(item, fieldNames.billNo)) === String(cancelBillNo)
     );
+
+    if (billItems.length === 0) {
+      alert("Bill not found");
+      return;
+    }
+
+    if (billItems.some((item) => isCanceledStatus(getField(item, fieldNames.status)))) {
+      alert("This bill is already cancelled");
+      return;
+    }
+
+    const cancelReason = window.prompt("Please enter cancel reason");
+    if (!cancelReason || String(cancelReason).trim() === "") {
+      alert("Cancel reason is required");
+      return;
+    }
+
+    const cancelledAt = new Date().toISOString();
+    const cancelledBy = approver.id || currentUser?.id || "";
+    const cancelledByUsername = approver.username || currentUser?.username || username || "";
+    const nextData = {
+      status: "cancelled",
+      cancelReason: String(cancelReason).trim(),
+      cancelledBy,
+      cancelledByUsername,
+      cancelledAt,
+    };
 
     try {
       for (const item of billItems) {
         if (!item.id) continue;
 
         await updateDoc(doc(db, "salesHistory", item.id), {
-          สถานะ: "ยกเลิกบิล",
-
-          เวลายกเลิก: new Date().toISOString(),
+          ["\u0e2a\u0e16\u0e32\u0e19\u0e30"]: "cancelled",
+          status: "cancelled",
+          cancelReason: nextData.cancelReason,
+          cancelledBy: nextData.cancelledBy,
+          cancelledByUsername: nextData.cancelledByUsername,
+          cancelledAt: nextData.cancelledAt,
+          ["\u0e40\u0e27\u0e25\u0e32\u0e22\u0e01\u0e40\u0e25\u0e34\u0e01"]: nextData.cancelledAt,
         });
       }
+
+      await writeAuditLog({ action: "CANCEL_BILL", targetType: "bill", targetId: cancelBillNo, oldData: billItems, newData: nextData });
 
       await loadSales();
 
@@ -1342,11 +1470,11 @@ export default function App() {
 
       setCancelBillNo(null);
 
-      alert("ยกเลิกบิลแล้ว");
+      alert("Bill cancelled");
     } catch (err) {
       console.log(err);
 
-      alert("ยกเลิกบิลไม่สำเร็จ");
+      alert("Cancel bill failed");
     }
   };
 
@@ -1414,6 +1542,7 @@ export default function App() {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Sales");
       XLSX.writeFile(wb, "sales-history.xlsx");
+      writeAuditLog({ action: "EXPORT_SALES", targetType: "salesHistory", newData: { rows: formattedData.length } });
     } catch (err) {
       console.log(err);
       alert("Export Excel ไม่สำเร็จ");
@@ -1442,6 +1571,7 @@ export default function App() {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Summary");
       XLSX.writeFile(wb, `summary-${summaryStartDate || "all"}-${summaryEndDate || "all"}.xlsx`);
+      writeAuditLog({ action: "EXPORT_SUMMARY", targetType: "summary", newData: { rows: exportData.length, startDate: summaryStartDate, endDate: summaryEndDate, branch: summaryBranch } });
     } catch (err) {
       console.log(err);
       alert("Export Summary ไม่สำเร็จ");

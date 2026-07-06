@@ -71,7 +71,8 @@ export function calcSaleRow(item) {
 }
 
 export function isCanceledStatus(status) {
-  return String(status || "").includes("ยก") || String(status || "").includes("เธขเธ") || String(status || "").includes("Cancel");
+  const text = String(status || "").toLowerCase();
+  return text.includes("\u0e22\u0e01") || text.includes("cancel");
 }
 
 export function buildSummaryResult({ salesHistory, summaryStartDate, summaryEndDate, summaryBranch, role, currentUser }) {

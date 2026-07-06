@@ -5,6 +5,10 @@ import { calcSaleRow, fieldNames, formatPromo, getField, isCanceledStatus, numbe
 
 const PAGE_SIZE = 30;
 
+function accProductText(item) {
+  return String(getField(item, fieldNames.product) || "").toLowerCase();
+}
+
 function formatDate(value) {
   if (!value) return "-";
   try { return new Date(value).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" }); } catch { return value; }
@@ -22,7 +26,10 @@ export default function HistoryPage(props) {
       const startOk = startDate === "" || itemDate >= new Date(startDate);
       const endOk = endDate === "" || itemDate <= new Date(endDate + " 23:59:59");
       const branchOk = role === "Admin" || role === "Audit" ? branchFilter === "" || branch === branchFilter : branch === currentUser?.branch;
-      return billNo.includes(historySearch) && startOk && endOk && branchOk;
+      const productText = accProductText(item);
+      const searchText = String(historySearch || "").toLowerCase().trim();
+      const searchOk = searchText === "" || billNo.toLowerCase().includes(searchText) || productText.includes(searchText);
+      return searchOk && startOk && endOk && branchOk;
     }).reduce((acc, item) => {
       const billNo = getField(item, fieldNames.billNo);
       if (!acc[billNo]) acc[billNo] = [];

@@ -44,6 +44,13 @@ function getClientSecurityContext() {
   };
 }
 
+function createClientId(prefix) {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return `${prefix}_${crypto.randomUUID()}`;
+  }
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
 function isSecureRuntime() {
   if (typeof window === "undefined") return true;
   const host = window.location.hostname;
@@ -330,7 +337,7 @@ export default function App() {
     const handleOnline = () => {
       setIsOffline(false);
 
-      syncOfflineSales();
+      syncAllPendingData();
     };
 
     const handleOffline = () => {
@@ -340,6 +347,10 @@ export default function App() {
     window.addEventListener("online", handleOnline);
 
     window.addEventListener("offline", handleOffline);
+
+    if (typeof navigator !== "undefined" && navigator.onLine) {
+      syncAllPendingData();
+    }
 
     return () => {
       window.removeEventListener("online", handleOnline);
@@ -447,7 +458,10 @@ export default function App() {
     setOfflineSyncing(true);
 
     try {
-      const pending = JSON.parse(localStorage.getItem("pending_sales") || "[]");
+      const pending = JSON.parse(localStorage.getItem("pending_sales") || "[]").map((sale) => ({
+        ...sale,
+        offlineId: sale.offlineId || createClientId("sale"),
+      }));
 
       if (pending.length === 0) {
         setOfflineSyncing(false);
@@ -458,19 +472,22 @@ export default function App() {
       const syncedIds = [];
 
       for (const sale of pending) {
-        const exists = salesHistory.find(
-          (item) => item.offlineId === sale.offlineId
-        );
+        const offlineId = sale.offlineId;
+        const exists = salesHistory.find((item) => item.offlineId === offlineId);
 
         if (exists) {
-          syncedIds.push(sale.offlineId);
+          syncedIds.push(offlineId);
 
           continue;
         }
 
-        await addDoc(collection(db, "salesHistory"), sale);
+        await setDoc(doc(db, "salesHistory", offlineId), {
+          ...sale,
+          offlineId,
+          syncedAt: new Date().toISOString(),
+        }, { merge: true });
 
-        syncedIds.push(sale.offlineId);
+        syncedIds.push(offlineId);
       }
 
       const remain = pending.filter(
@@ -489,10 +506,46 @@ export default function App() {
     setOfflineSyncing(false);
   };
 
+  const syncPendingAuditLogs = async () => {
+    const pendingLogs = JSON.parse(localStorage.getItem("pending_audit_logs") || "[]").map((log) => ({
+      ...log,
+      auditLogId: log.auditLogId || createClientId("audit"),
+    }));
+    if (pendingLogs.length === 0) return;
+
+    const syncedIds = [];
+
+    for (const log of pendingLogs) {
+      const auditLogId = log.auditLogId;
+      await setDoc(doc(db, "auditLogs", auditLogId), {
+        ...log,
+        auditLogId,
+        syncedAt: new Date().toISOString(),
+      }, { merge: true });
+      syncedIds.push(auditLogId);
+    }
+
+    const remain = pendingLogs.filter((log) => !syncedIds.includes(log.auditLogId));
+    localStorage.setItem("pending_audit_logs", JSON.stringify(remain));
+  };
+
+  const syncAllPendingData = async () => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) return;
+
+    try {
+      await syncPendingAuditLogs();
+      await syncOfflineSales();
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
   const writeAuditLog = async ({ action, targetType = "system", targetId = "", oldData = null, newData = null, userOverride = null }) => {
     const actor = userOverride || currentUser || {};
     const security = getClientSecurityContext();
+    const auditLogId = createClientId("audit");
     const logData = {
+      auditLogId,
       userId: actor.id || "",
       username: actor.username || username || "",
       role: actor.role || role || "",
@@ -508,7 +561,7 @@ export default function App() {
     };
 
     try {
-      await addDoc(collection(db, "auditLogs"), logData);
+      await setDoc(doc(db, "auditLogs", auditLogId), logData, { merge: true });
     } catch (err) {
       console.log(err);
       const pendingLogs = JSON.parse(localStorage.getItem("pending_audit_logs") || "[]");
@@ -590,6 +643,7 @@ export default function App() {
     localStorage.setItem("user", JSON.stringify(sessionUser));
     localStorage.setItem("last_activity_at", String(Date.now()));
     await writeAuditLog({ action: "LOGIN_SUCCESS", targetType: "auth", targetId: sessionUser.id, newData: sessionUser, userOverride: sessionUser });
+    await syncAllPendingData();
   };
 
   const logout = async () => {

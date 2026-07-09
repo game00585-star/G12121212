@@ -1429,9 +1429,9 @@ th button {
 /* POS responsive cleanup */
 .dfarm-red-logo { display: none !important; }
 .sidebar-brand-block { gap: 0; }
-.pos-line-table-wrap, .data-table-wrap { width: 100%; margin-top: 20px; overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
-.pos-line-table, .data-table { width: 100%; border-collapse: collapse; min-width: 720px; background: #fff; }
-.pos-line-table th, .pos-line-table td, .data-table th, .data-table td { padding: 12px 14px; border-bottom: 1px solid #e8edf4; text-align: left; vertical-align: middle; }
+.pos-line-table-wrap, .data-table-wrap { width: 100%; max-height: var(--dfarm-table-height, none); margin-top: 20px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
+.pos-line-table, .data-table { width: 100%; border-collapse: collapse; min-width: var(--dfarm-table-width, 720px); background: #fff; }
+.pos-line-table th, .pos-line-table td, .data-table th, .data-table td { height: var(--dfarm-row-height, auto); padding: 12px 14px; border-bottom: 1px solid #e8edf4; text-align: left; vertical-align: middle; }
 .pos-line-table th, .data-table th { background: #fff5bf; color: #0f172a; font-weight: 900; white-space: nowrap; }
 .pos-line-table tbody tr, .data-table tbody tr { cursor: pointer; }
 .pos-line-table tbody tr:hover, .data-table tbody tr:hover { background: #f8fafc; }

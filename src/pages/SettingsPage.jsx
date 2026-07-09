@@ -8,37 +8,162 @@ const DEFAULT_SETTINGS = {
   pageSize: 30,
 };
 
-const settingCard = {
-  border: "1px solid #e2e8f0",
-  borderRadius: 12,
-  padding: 16,
-  background: "#fff",
+const pageWrap = {
+  display: "grid",
+  gap: 18,
 };
+
+const heroCard = {
+  display: "flex",
+  alignItems: "center",
+  gap: 18,
+  padding: "24px 26px",
+  border: "1px solid #e2e8f0",
+  borderRadius: 14,
+  background: "#fff",
+  boxShadow: "0 8px 24px rgba(15,23,42,.06)",
+};
+
+const sectionCard = {
+  border: "1px solid #e2e8f0",
+  borderRadius: 14,
+  padding: 22,
+  background: "#fff",
+  boxShadow: "0 8px 24px rgba(15,23,42,.06)",
+};
+
+const actionCard = {
+  display: "flex",
+  alignItems: "center",
+  gap: 18,
+  padding: 18,
+  minHeight: 102,
+  border: "1px solid #dbe3ef",
+  borderRadius: 12,
+  background: "#fff",
+  cursor: "pointer",
+  textAlign: "left",
+};
+
+const iconCircle = (bg, color) => ({
+  width: 64,
+  height: 64,
+  borderRadius: 999,
+  display: "grid",
+  placeItems: "center",
+  background: bg,
+  color,
+  flex: "0 0 auto",
+});
 
 const labelStyle = {
   display: "block",
   fontWeight: 900,
   color: "#0f172a",
-  marginBottom: 4,
+  marginBottom: 8,
 };
 
 const helperStyle = {
   color: "#64748b",
   fontSize: 13,
-  marginTop: 6,
+  marginTop: 8,
+  lineHeight: 1.45,
 };
+
+const inputUnitWrap = {
+  position: "relative",
+};
+
+const unitText = {
+  position: "absolute",
+  right: 16,
+  top: "50%",
+  transform: "translateY(-15%)",
+  color: "#64748b",
+  fontWeight: 800,
+  pointerEvents: "none",
+};
+
+function DownloadIcon() {
+  return (
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3v12" />
+      <path d="m7 10 5 5 5-5" />
+      <path d="M5 21h14" />
+    </svg>
+  );
+}
+
+function UploadIcon() {
+  return (
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 21V9" />
+      <path d="m7 14 5-5 5 5" />
+      <path d="M5 3h14" />
+    </svg>
+  );
+}
+
+function GearIcon() {
+  return (
+    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.9 3.2-.2-.1a1.7 1.7 0 0 0-2 .2l-.3.2a1.7 1.7 0 0 0-.8 1.5v.2h-3.8V22a1.7 1.7 0 0 0-.8-1.5l-.3-.2a1.7 1.7 0 0 0-2-.2l-.2.1L5.6 17l.1-.1A1.7 1.7 0 0 0 6 15l-.1-.4A1.7 1.7 0 0 0 4.4 13H4V9h.4a1.7 1.7 0 0 0 1.5-1.1l.1-.4a1.7 1.7 0 0 0-.3-1.9l-.1-.1 1.9-3.2.2.1a1.7 1.7 0 0 0 2-.2l.3-.2A1.7 1.7 0 0 0 10.8.5h3.8A1.7 1.7 0 0 0 15.4 2l.3.2a1.7 1.7 0 0 0 2 .2l.2-.1 1.9 3.2-.1.1a1.7 1.7 0 0 0-.3 1.9l.1.4A1.7 1.7 0 0 0 21 9h.4v4H21a1.7 1.7 0 0 0-1.5 1.1l-.1.4Z" />
+    </svg>
+  );
+}
+
+function SettingControl({ label, helper, value, min, max, step, unit, onChange }) {
+  return (
+    <div>
+      <label style={labelStyle}>{label}</label>
+      <div style={inputUnitWrap}>
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          style={{ ...inputStyle, marginTop: 0, paddingRight: unit ? 56 : 18 }}
+        />
+        {unit && <span style={unitText}>{unit}</span>}
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        style={{ width: "100%", marginTop: 12, accentColor: "#2563eb" }}
+      />
+      <div style={helperStyle}>{helper}</div>
+    </div>
+  );
+}
 
 export default function SettingsPage({ systemSettings, setSystemSettings, exportSystemJson, importSystemJson }) {
   const fileInputRef = React.useRef(null);
+  const [draft, setDraft] = React.useState(systemSettings);
 
-  const updateSetting = (name, value) => {
-    setSystemSettings((prev) => ({
+  React.useEffect(() => {
+    setDraft(systemSettings);
+  }, [systemSettings]);
+
+  const updateDraft = (name, value) => {
+    setDraft((prev) => ({
       ...prev,
       [name]: Number(value || 0),
     }));
   };
 
+  const saveSettings = () => {
+    setSystemSettings(draft);
+  };
+
   const resetSettings = () => {
+    setDraft(DEFAULT_SETTINGS);
     setSystemSettings(DEFAULT_SETTINGS);
   };
 
@@ -65,51 +190,92 @@ export default function SettingsPage({ systemSettings, setSystemSettings, export
   };
 
   return (
-    <div style={cardStyle}>
+    <div style={{ ...cardStyle, ...pageWrap }}>
       <div className="page-head">
         <div>
-          <h2>ตั้งค่า</h2>
+          <h2>ตั้งค่าระบบ</h2>
           <p>ตั้งค่าการแสดงผล การสำรองข้อมูล และการนำเข้าข้อมูลของทั้งระบบ</p>
         </div>
       </div>
 
-      <div style={{ ...settingCard, marginBottom: 18 }}>
+      <section style={heroCard}>
+        <div style={iconCircle("#e8f0ff", "#2563eb")}><GearIcon /></div>
+        <div>
+          <h3 style={{ margin: 0, color: "#2563eb" }}>ตั้งค่าทั้งระบบ</h3>
+          <p style={{ ...helperStyle, marginBottom: 0 }}>หน้านี้ใช้สำหรับจัดการพฤติกรรมการทำงานของระบบโดยรวม และการจัดการข้อมูลสำคัญของทั้งระบบ</p>
+        </div>
+      </section>
+
+      <section style={sectionCard}>
         <h3 style={{ marginTop: 0 }}>สำรองและนำเข้าข้อมูล</h3>
-        <p style={helperStyle}>Backup JSON จะดาวน์โหลดข้อมูลระบบเป็นไฟล์ JSON ส่วน Import JSON จะนำข้อมูลจากไฟล์กลับเข้าระบบ</p>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-          <button type="button" style={saveBtn} onClick={exportSystemJson}>Backup JSON</button>
-          <button type="button" style={printBtn} onClick={handleImportClick}>Import JSON</button>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 18 }}>
+          <button type="button" style={actionCard} onClick={exportSystemJson}>
+            <span style={iconCircle("#e8f0ff", "#2563eb")}><DownloadIcon /></span>
+            <span>
+              <strong style={{ display: "block", color: "#2563eb", fontSize: 18 }}>Backup JSON</strong>
+              <span style={helperStyle}>ดาวน์โหลดข้อมูลระบบเป็นไฟล์ JSON เพื่อสำรองข้อมูล</span>
+            </span>
+          </button>
+          <button type="button" style={actionCard} onClick={handleImportClick}>
+            <span style={iconCircle("#dcfce7", "#16a34a")}><UploadIcon /></span>
+            <span>
+              <strong style={{ display: "block", color: "#16a34a", fontSize: 18 }}>Import JSON</strong>
+              <span style={helperStyle}>นำเข้าข้อมูลจากไฟล์ JSON เพื่อกู้คืนหรืออัปเดตข้อมูล</span>
+            </span>
+          </button>
           <input ref={fileInputRef} type="file" accept="application/json,.json" onChange={handleImportFile} style={{ display: "none" }} />
         </div>
-      </div>
+      </section>
 
-      <div style={settingCard}>
+      <section style={sectionCard}>
         <h3 style={{ marginTop: 0 }}>ตั้งค่าตารางและการแสดงผล</h3>
-        <div className="filter-grid">
-          <div>
-            <label style={labelStyle}>ความสูงแถว</label>
-            <input type="number" min="44" step="4" value={systemSettings.rowHeight} onChange={(e) => updateSetting("rowHeight", e.target.value)} style={inputStyle} />
-            <div style={helperStyle}>กำหนดความสูงของแต่ละแถวในตาราง หน่วย px</div>
-          </div>
-          <div>
-            <label style={labelStyle}>ความกว้างตาราง</label>
-            <input type="number" min="900" step="20" value={systemSettings.tableWidth} onChange={(e) => updateSetting("tableWidth", e.target.value)} style={inputStyle} />
-            <div style={helperStyle}>กำหนดความกว้างขั้นต่ำของตาราง หน่วย px</div>
-          </div>
-          <div>
-            <label style={labelStyle}>ความสูงตาราง</label>
-            <input type="number" min="240" step="20" value={systemSettings.tableHeight} onChange={(e) => updateSetting("tableHeight", e.target.value)} style={inputStyle} />
-            <div style={helperStyle}>กำหนดความสูงพื้นที่ตารางก่อนเลื่อน หน่วย px</div>
-          </div>
-          <div>
-            <label style={labelStyle}>จำนวนรายการต่อหน้า</label>
-            <input type="number" min="5" step="5" value={systemSettings.pageSize} onChange={(e) => updateSetting("pageSize", e.target.value)} style={inputStyle} />
-            <div style={helperStyle}>ใช้กับหน้ารายการขายและ Audit Log</div>
-          </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 24 }}>
+          <SettingControl
+            label="ความสูงแถว"
+            helper="กำหนดความสูงของแต่ละแถวในตาราง"
+            value={draft.rowHeight}
+            min="44"
+            max="120"
+            step="4"
+            unit="px"
+            onChange={(value) => updateDraft("rowHeight", value)}
+          />
+          <SettingControl
+            label="ความกว้างตาราง"
+            helper="กำหนดความกว้างของพื้นที่ตารางให้เหมาะกับหน้าจอ"
+            value={draft.tableWidth}
+            min="900"
+            max="1800"
+            step="20"
+            unit="px"
+            onChange={(value) => updateDraft("tableWidth", value)}
+          />
+          <SettingControl
+            label="ความสูงตาราง"
+            helper="กำหนดความสูงของตารางเพื่อให้เลื่อนดูข้อมูลได้สะดวก"
+            value={draft.tableHeight}
+            min="240"
+            max="1000"
+            step="20"
+            unit="px"
+            onChange={(value) => updateDraft("tableHeight", value)}
+          />
+          <SettingControl
+            label="จำนวนรายการต่อหน้า"
+            helper="เลือกรายการที่ต้องการแสดงในแต่ละหน้า"
+            value={draft.pageSize}
+            min="5"
+            max="100"
+            step="5"
+            unit=""
+            onChange={(value) => updateDraft("pageSize", value)}
+          />
         </div>
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-          <button type="button" style={cancelBtn} onClick={resetSettings}>รีเซ็ตค่าเริ่มต้น</button>
-        </div>
+      </section>
+
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 14, flexWrap: "wrap" }}>
+        <button type="button" style={{ ...cancelBtn, background: "#fff", color: "#334155", border: "1px solid #cbd5e1" }} onClick={resetSettings}>รีเซ็ตค่าเริ่มต้น</button>
+        <button type="button" style={{ ...saveBtn, background: "#2563eb", minWidth: 220 }} onClick={saveSettings}>บันทึกการตั้งค่า</button>
       </div>
     </div>
   );

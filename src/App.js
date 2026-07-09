@@ -242,6 +242,11 @@ export default function App() {
 
   React.useEffect(() => {
     localStorage.setItem("dfarm_system_settings", JSON.stringify(systemSettings));
+    if (typeof document !== "undefined") {
+      document.documentElement.style.setProperty("--dfarm-row-height", `${Number(systemSettings.rowHeight || 56)}px`);
+      document.documentElement.style.setProperty("--dfarm-table-width", `${Number(systemSettings.tableWidth || 1180)}px`);
+      document.documentElement.style.setProperty("--dfarm-table-height", `${Number(systemSettings.tableHeight || 620)}px`);
+    }
   }, [systemSettings]);
 
   React.useEffect(() => {
@@ -1913,6 +1918,7 @@ export default function App() {
           newResetPassword={newResetPassword}
           setNewResetPassword={setNewResetPassword}
           resetPassword={resetPassword}
+          systemSettings={systemSettings}
         />
       )}
       {page === "audit" && (role === "Admin" || role === "Audit") && (

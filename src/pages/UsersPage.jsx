@@ -15,8 +15,6 @@ import {
   modalBox,
 } from "../styles/uiStyles";
 
-const PAGE_SIZE = 30;
-
 function PasswordInput({ value, onChange, placeholder }) {
   const [show, setShow] = React.useState(false);
   return (
@@ -38,13 +36,14 @@ export default function UsersPage(props) {
   const {
     newUsername, setNewUsername, newPassword, setNewPassword, newBranch, setNewBranch,
     newEmployeeName, setNewEmployeeName, newRole, setNewRole, addUser, users, setResetUserId,
-    deleteUser, resetUserId, newResetPassword, setNewResetPassword, resetPassword,
+    deleteUser, resetUserId, newResetPassword, setNewResetPassword, resetPassword, systemSettings,
   } = props;
   const [page, setPage] = React.useState(1);
   const [visiblePasswords, setVisiblePasswords] = React.useState({});
-  const totalPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
+  const pageSize = Math.max(5, Number(systemSettings?.pageSize || 30));
+  const totalPages = Math.max(1, Math.ceil(users.length / pageSize));
   const safePage = Math.min(page, totalPages);
-  const pageUsers = users.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const pageUsers = users.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   return (
     <div style={cardStyle}>

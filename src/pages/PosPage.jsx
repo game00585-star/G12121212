@@ -130,11 +130,14 @@ export default function PosPage(props) {
         <div className="pos-section-head"><div><p className="pos-eyebrow">D-FARM POS</p><h2>ขายสินค้า</h2><div className="pos-user-line">เลือกสินค้า / ค้นหาบาร์โค้ด</div></div><button className="scan-button" type="button" onClick={() => setScannerOpen(true)}>สแกนบาร์โค้ด</button></div>
         <div className="pos-search-row"><input ref={searchInputRef} placeholder="ค้นหาสินค้า / ชื่อสินค้า / บาร์โค้ด" value={scan} onChange={(e) => handleSearchChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submitManualBarcode(); }} className="pos-search-input" /><button className="barcode-button checkout-jump-button" type="button" onClick={scrollToPayment}>คิดเงิน</button></div>
         <div className="pos-category-panel">
-          <div className="pos-category-search"><span aria-hidden="true">⌕</span><span>{activeCategory || "ค้นหาหมวดสินค้า"}</span></div>
           <div className="pos-category-strip" aria-label="หมวดสินค้า">
             {POS_CATEGORIES.map((category) => (
               <button key={category.name} type="button" className={`pos-category-button${activeCategory === category.name ? " active" : ""}`} onClick={() => handleCategoryClick(category.name)}>
-                <span className="pos-category-icon" aria-hidden="true">{category.icon}</span>
+                <span className={`pos-category-art${category.name.includes("แช่") ? " frozen" : ""}`} aria-hidden="true">
+                  <span className="pos-category-blob" />
+                  <span className="pos-category-main-icon">{category.icon}</span>
+                  {category.name.includes("แช่") && <span className="pos-category-snow">❄</span>}
+                </span>
                 <span>{category.name}</span>
               </button>
             ))}

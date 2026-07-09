@@ -1,6 +1,7 @@
 import React from "react";
+import * as XLSX from "xlsx";
 import Pagination from "../components/Pagination";
-import { cardStyle } from "../styles/uiStyles";
+import { cardStyle, saveBtn } from "../styles/uiStyles";
 
 function cleanText(value) {
   return String(value || "").toLowerCase().trim();
@@ -156,6 +157,38 @@ export default function AuditLogPage({ auditLogs, systemSettings }) {
     });
   };
 
+  const exportAuditExcel = () => {
+    const exportRows = filteredLogs.map((log) => {
+      const values = logValues(log);
+      return {
+        วันที่: values.date,
+        เวลา: values.time,
+        Username: log.username || "-",
+        Role: log.role || "-",
+        Branch: log.branch || "-",
+        Action: log.action || "-",
+        "Target Type": log.targetType || "-",
+        "Target ID": log.targetId || "-",
+        "IP ผู้ใช้งาน": log.ipAddress || "-",
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(exportRows);
+    ws["!cols"] = [
+      { wch: 14 },
+      { wch: 12 },
+      { wch: 18 },
+      { wch: 14 },
+      { wch: 18 },
+      { wch: 24 },
+      { wch: 16 },
+      { wch: 22 },
+      { wch: 22 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Audit Log");
+    XLSX.writeFile(wb, "audit-log.xlsx");
+  };
+
   const selectFilter = (key, label) => (
     <label>
       {label}
@@ -176,6 +209,7 @@ export default function AuditLogPage({ auditLogs, systemSettings }) {
             <p>แสดง {pageLogs.length} จาก {filteredLogs.length} รายการ</p>
           </div>
         </div>
+        <button style={saveBtn} className="excel-button" onClick={exportAuditExcel}>Export Excel</button>
       </div>
 
       <div className="report-search-row">

@@ -32,21 +32,58 @@ function PasswordInput({ value, onChange, placeholder }) {
   );
 }
 
+function cleanText(value) {
+  return String(value || "").toLowerCase().trim();
+}
+
 export default function UsersPage(props) {
   const {
-    newUsername, setNewUsername, newPassword, setNewPassword, newBranch, setNewBranch,
-    newEmployeeName, setNewEmployeeName, newRole, setNewRole, addUser, users, setResetUserId,
-    deleteUser, resetUserId, newResetPassword, setNewResetPassword, resetPassword, systemSettings,
+    newUsername,
+    setNewUsername,
+    newPassword,
+    setNewPassword,
+    newBranch,
+    setNewBranch,
+    newEmployeeName,
+    setNewEmployeeName,
+    newRole,
+    setNewRole,
+    addUser,
+    users,
+    setResetUserId,
+    deleteUser,
+    resetUserId,
+    newResetPassword,
+    setNewResetPassword,
+    resetPassword,
+    systemSettings,
   } = props;
   const [page, setPage] = React.useState(1);
   const [visiblePasswords, setVisiblePasswords] = React.useState({});
+  const [userSearch, setUserSearch] = React.useState("");
   const pageSize = Math.max(5, Number(systemSettings?.pageSize || 30));
   const rowHeight = Number(systemSettings?.rowHeight || 56);
   const tableWidth = Number(systemSettings?.tableWidth || 1180);
   const tableHeight = Number(systemSettings?.tableHeight || 620);
-  const totalPages = Math.max(1, Math.ceil(users.length / pageSize));
+
+  const filteredUsers = React.useMemo(() => {
+    const keyword = cleanText(userSearch);
+    if (!keyword) return users;
+    return users.filter((user) => {
+      const tableText = [
+        user.username,
+        user.password,
+        user.employeeName,
+        user.branch,
+        user.role,
+      ].map(cleanText).join(" ");
+      return tableText.includes(keyword);
+    });
+  }, [users, userSearch]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
   const safePage = Math.min(page, totalPages);
-  const pageUsers = users.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const pageUsers = filteredUsers.slice((safePage - 1) * pageSize, safePage * pageSize);
   const userTableStyle = {
     ...tableStyle,
     minWidth: tableWidth,
@@ -57,13 +94,18 @@ export default function UsersPage(props) {
     height: rowHeight,
   };
 
+  React.useEffect(() => {
+    setPage(1);
+  }, [userSearch, pageSize, users.length]);
+
   return (
     <div style={cardStyle}>
       <div className="page-head">
         <div>
           <h2>จัดการผู้ใช้งาน</h2>
-          <p>แสดง {pageUsers.length} จาก {users.length} รายการ</p>
-        </div>      </div>
+          <p>แสดง {pageUsers.length} จาก {filteredUsers.length} รายการ</p>
+        </div>
+      </div>
 
       <div className="user-form-grid">
         <input placeholder="Username" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} style={inputStyle} />
@@ -79,6 +121,13 @@ export default function UsersPage(props) {
         </select>
         <button style={saveBtn} onClick={addUser}>เพิ่มผู้ใช้</button>
       </div>
+
+      <input
+        placeholder="ค้นหาผู้ใช้งาน"
+        value={userSearch}
+        onChange={(e) => setUserSearch(e.target.value)}
+        style={{ ...inputStyle, marginTop: 16 }}
+      />
 
       <div style={{ overflow: "auto", width: "100%", maxHeight: tableHeight, marginTop: 16 }}>
         <table style={userTableStyle}>
@@ -118,6 +167,11 @@ export default function UsersPage(props) {
                 <td style={userCellStyle}><button style={cancelBtn} onClick={() => deleteUser(user.id)}>Delete</button></td>
               </tr>
             ))}
+            {pageUsers.length === 0 && (
+              <tr>
+                <td style={userCellStyle} colSpan="7">ไม่พบผู้ใช้งาน</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

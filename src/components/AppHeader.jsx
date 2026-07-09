@@ -17,6 +17,9 @@ const IconBox = () => (
 const IconUsers = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 19c0-2.2-1.8-4-4-4H8c-2.2 0-4 1.8-4 4" /><path d="M10 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" /><path d="M20 19c0-1.8-1.2-3.4-3-3.9" /><path d="M15 5.2a3 3 0 0 1 0 5.6" /></svg>
 );
+const IconAudit = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 5 3 8.5 7 10 4-1.5 7-5 7-10V6l-7-3Z" /><path d="M9 12l2 2 4-5" /></svg>
+);
 const IconLogout = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5" /><path d="M15 12H3" /><path d="M13 4h6v16h-6" /></svg>
 );
@@ -30,6 +33,7 @@ export default function AppHeader({ employeeName, branch, role, isOffline, page,
     { key: "summary", label: "สรุปยอดขาย", Icon: IconChart },
     { key: "price", label: "สินค้า", Icon: IconBox },
     ...(canManageUsers ? [{ key: "users", label: "ผู้ใช้งาน", Icon: IconUsers }] : []),
+    ...(canManageUsers ? [{ key: "audit", label: "Audit Log", Icon: IconAudit }] : []),
   ];
 
   return (

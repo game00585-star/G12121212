@@ -11,6 +11,7 @@ import {
   collection,
   addDoc,
   getDocs,
+  setDoc,
   doc,
   deleteDoc,
   updateDoc,
@@ -22,6 +23,7 @@ import PosPage from "./pages/PosPage";
 import HistoryPage from "./pages/HistoryPage";
 import SummaryPage from "./pages/SummaryPage";
 import UsersPage from "./pages/UsersPage";
+import AuditLogPage from "./pages/AuditLogPage";
 
 import {
   mainPage,
@@ -35,11 +37,23 @@ import {
 const SALE_POPUP_STATE_KEY = "dfarm_sale_popup_state";
 const CART_STATE_KEY = "dfarm_cart_state";
 const APP_LOCATION_STATE_KEY = "dfarm_app_location_state";
-const APP_PAGE_KEYS = ["pos", "history", "summary", "price", "users"];
+const APP_PAGE_KEYS = ["pos", "history", "summary", "price", "users", "audit"];
 
-function getClientSecurityContext() {
+async function getClientSecurityContext() {
+  let ipAddress = localStorage.getItem("dfarm_client_ip") || "";
+  if (!ipAddress && typeof fetch !== "undefined" && typeof navigator !== "undefined" && navigator.onLine) {
+    try {
+      const response = await fetch("https://api.ipify.org?format=json", { cache: "no-store" });
+      const data = await response.json();
+      ipAddress = data?.ip || "";
+      if (ipAddress) localStorage.setItem("dfarm_client_ip", ipAddress);
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
   return {
-    ipAddress: "client-side-unavailable",
+    ipAddress: ipAddress || "client-side-unavailable",
     userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
   };
 }
@@ -174,6 +188,8 @@ export default function App() {
   const [newEmployeeName, setNewEmployeeName] = React.useState("");
 
   const [users, setUsers] = React.useState([]);
+
+  const [auditLogs, setAuditLogs] = React.useState([]);
 
   const [isOffline, setIsOffline] = React.useState(
     typeof navigator !== "undefined" ? !navigator.onLine : false
@@ -311,6 +327,8 @@ export default function App() {
     loadSales();
 
     loadUsers();
+
+    loadAuditLogs();
 
     const savedUser = localStorage.getItem("user");
 
@@ -452,6 +470,36 @@ export default function App() {
       }
     }
   };
+
+  const loadAuditLogs = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "auditLogs"));
+
+      const items = querySnapshot.docs
+        .map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }))
+        .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+
+      setAuditLogs(items);
+
+      localStorage.setItem("offline_audit_logs", JSON.stringify(items));
+    } catch (err) {
+      console.log(err);
+
+      const offlineData = localStorage.getItem("offline_audit_logs");
+
+      if (offlineData) {
+        try {
+          setAuditLogs(JSON.parse(offlineData));
+        } catch (e) {
+          console.log(e);
+        }
+      }
+    }
+  };
+
   const syncOfflineSales = async () => {
     if (offlineSyncing) return;
 
@@ -527,6 +575,7 @@ export default function App() {
 
     const remain = pendingLogs.filter((log) => !syncedIds.includes(log.auditLogId));
     localStorage.setItem("pending_audit_logs", JSON.stringify(remain));
+    await loadAuditLogs();
   };
 
   const syncAllPendingData = async () => {
@@ -542,7 +591,7 @@ export default function App() {
 
   const writeAuditLog = async ({ action, targetType = "system", targetId = "", oldData = null, newData = null, userOverride = null }) => {
     const actor = userOverride || currentUser || {};
-    const security = getClientSecurityContext();
+    const security = await getClientSecurityContext();
     const auditLogId = createClientId("audit");
     const logData = {
       auditLogId,
@@ -562,6 +611,7 @@ export default function App() {
 
     try {
       await setDoc(doc(db, "auditLogs", auditLogId), logData, { merge: true });
+      setAuditLogs((prev) => [logData, ...prev].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || ""))));
     } catch (err) {
       console.log(err);
       const pendingLogs = JSON.parse(localStorage.getItem("pending_audit_logs") || "[]");
@@ -1761,6 +1811,9 @@ export default function App() {
           setNewResetPassword={setNewResetPassword}
           resetPassword={resetPassword}
         />
+      )}
+      {page === "audit" && (role === "Admin" || role === "Audit") && (
+        <AuditLogPage auditLogs={auditLogs} />
       )}
 
     </div>

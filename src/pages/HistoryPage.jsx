@@ -63,6 +63,14 @@ export default function HistoryPage(props) {
 
   React.useEffect(() => setPage(1), [historySearch, startDate, endDate, branchFilter, searchMode, safePageSize]);
 
+  const clearSearch = () => {
+    setHistorySearch("");
+    setSearchMode("all");
+    setStartDate("");
+    setEndDate("");
+    setBranchFilter("");
+  };
+
   return (
     <div style={cardStyle}>
       <div className="page-head">
@@ -75,12 +83,16 @@ export default function HistoryPage(props) {
 
       <div className="filter-grid">
         <input placeholder="ค้นหาเลขบิล / ชื่อสินค้า" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} style={inputStyle} />
+        <button type="button" style={{ ...cancelBtn, marginTop: 15 }} onClick={clearSearch}>ล้างค้นหา</button>
+      </div>
+
+      <div style={{ marginTop: 12, fontWeight: 900 }}>Filter</div>
+      <div className="filter-grid">
         <select value={searchMode} onChange={(e) => setSearchMode(e.target.value)} style={inputStyle}>
           <option value="all">ค้นหาเลขบิล + ชื่อสินค้า</option>
           <option value="bill">ค้นหาเลขบิล</option>
           <option value="product">ค้นหาชื่อสินค้า</option>
         </select>
-        <input type="number" min="5" step="5" placeholder="จำนวนบิลต่อหน้า" value={pageSize} onChange={(e) => setPageSize(e.target.value)} style={inputStyle} />
         <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={inputStyle} />
         <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={inputStyle} />
         {(role === "Admin" || role === "Audit") && (
@@ -92,6 +104,13 @@ export default function HistoryPage(props) {
           </select>
         )}
       </div>
+
+      <details style={{ marginTop: 14 }}>
+        <summary style={{ cursor: "pointer", fontWeight: 900 }}>ตั้งค่า</summary>
+        <div className="filter-grid" style={{ marginTop: 6 }}>
+          <input type="number" min="5" step="5" placeholder="จำนวนบิลต่อหน้า" value={pageSize} onChange={(e) => setPageSize(e.target.value)} style={inputStyle} />
+        </div>
+      </details>
 
       {pageBills.map((bill, index) => {
         const first = bill[0];

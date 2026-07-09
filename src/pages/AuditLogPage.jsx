@@ -6,6 +6,7 @@ import {
   inputStyle,
   saveBtn,
   printBtn,
+  cancelBtn,
 } from "../styles/uiStyles";
 
 const DEFAULT_PAGE_SIZE = 30;
@@ -129,6 +130,20 @@ export default function AuditLogPage({ auditLogs, exportAuditLogsJson, importAud
     reader.readAsText(file, "utf-8");
   };
 
+  const clearSearch = () => {
+    setSearch("");
+    setFilters({
+      time: "",
+      username: "",
+      role: "",
+      branch: "",
+      action: "",
+      targetType: "",
+      targetId: "",
+      ipAddress: "",
+    });
+  };
+
   return (
     <div style={cardStyle}>
       <div className="page-head">
@@ -136,17 +151,15 @@ export default function AuditLogPage({ auditLogs, exportAuditLogsJson, importAud
           <h2>Audit Log</h2>
           <p>แสดง {pageLogs.length} จาก {filteredLogs.length} รายการ</p>
         </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button type="button" style={saveBtn} onClick={exportAuditLogsJson}>Backup JSON</button>
-          <label style={{ ...printBtn, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-            Import JSON
-            <input type="file" accept="application/json,.json" onChange={handleImport} style={{ display: "none" }} />
-          </label>
-        </div>
       </div>
 
       <div className="filter-grid">
         <input placeholder="ค้นหาเรียลไทม์" value={search} onChange={(e) => setSearch(e.target.value)} style={inputStyle} />
+        <button type="button" style={{ ...cancelBtn, marginTop: 15 }} onClick={clearSearch}>ล้างค้นหา</button>
+      </div>
+
+      <div style={{ marginTop: 12, fontWeight: 900 }}>Filter</div>
+      <div className="filter-grid">
         <input placeholder="เวลา" value={filters.time} onChange={(e) => updateFilter("time", e.target.value)} style={inputStyle} />
         <input placeholder="Username" value={filters.username} onChange={(e) => updateFilter("username", e.target.value)} style={inputStyle} />
         <input placeholder="Role" value={filters.role} onChange={(e) => updateFilter("role", e.target.value)} style={inputStyle} />
@@ -157,12 +170,22 @@ export default function AuditLogPage({ auditLogs, exportAuditLogsJson, importAud
         <input placeholder="IP" value={filters.ipAddress} onChange={(e) => updateFilter("ipAddress", e.target.value)} style={inputStyle} />
       </div>
 
-      <div className="filter-grid" style={{ marginTop: 6 }}>
-        <input type="number" min="5" step="5" placeholder="จำนวนต่อหน้า" value={pageSize} onChange={(e) => setPageSize(e.target.value)} style={inputStyle} />
-        <input type="number" min="44" step="4" placeholder="ความสูงแถว" value={rowHeight} onChange={(e) => setRowHeight(e.target.value)} style={inputStyle} />
-        <input type="number" min="900" step="20" placeholder="ความกว้างตาราง" value={tableWidth} onChange={(e) => setTableWidth(e.target.value)} style={inputStyle} />
-        <input type="number" min="240" step="20" placeholder="ความสูงตาราง" value={tableHeight} onChange={(e) => setTableHeight(e.target.value)} style={inputStyle} />
-      </div>
+      <details style={{ marginTop: 14 }}>
+        <summary style={{ cursor: "pointer", fontWeight: 900 }}>ตั้งค่า</summary>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+          <button type="button" style={saveBtn} onClick={exportAuditLogsJson}>Backup JSON</button>
+          <label style={{ ...printBtn, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+            Import JSON
+            <input type="file" accept="application/json,.json" onChange={handleImport} style={{ display: "none" }} />
+          </label>
+        </div>
+        <div className="filter-grid" style={{ marginTop: 6 }}>
+          <input type="number" min="5" step="5" placeholder="จำนวนต่อหน้า" value={pageSize} onChange={(e) => setPageSize(e.target.value)} style={inputStyle} />
+          <input type="number" min="44" step="4" placeholder="ความสูงแถว" value={rowHeight} onChange={(e) => setRowHeight(e.target.value)} style={inputStyle} />
+          <input type="number" min="900" step="20" placeholder="ความกว้างตาราง" value={tableWidth} onChange={(e) => setTableWidth(e.target.value)} style={inputStyle} />
+          <input type="number" min="240" step="20" placeholder="ความสูงตาราง" value={tableHeight} onChange={(e) => setTableHeight(e.target.value)} style={inputStyle} />
+        </div>
+      </details>
 
       <div style={{ overflow: "auto", width: "100%", maxHeight: Number(tableHeight || 620), border: "1px solid #e5e7eb", borderRadius: 12, marginTop: 16 }}>
         <table style={{ width: "100%", minWidth: Number(tableWidth || 1180), borderCollapse: "separate", borderSpacing: 0 }}>

@@ -24,6 +24,7 @@ import HistoryPage from "./pages/HistoryPage";
 import SummaryPage from "./pages/SummaryPage";
 import UsersPage from "./pages/UsersPage";
 import AuditLogPage from "./pages/AuditLogPage";
+import SettingsPage from "./pages/SettingsPage";
 
 import {
   mainPage,
@@ -37,7 +38,13 @@ import {
 const SALE_POPUP_STATE_KEY = "dfarm_sale_popup_state";
 const CART_STATE_KEY = "dfarm_cart_state";
 const APP_LOCATION_STATE_KEY = "dfarm_app_location_state";
-const APP_PAGE_KEYS = ["pos", "history", "summary", "price", "users", "audit"];
+const APP_PAGE_KEYS = ["pos", "history", "summary", "price", "users", "audit", "settings"];
+const DEFAULT_SYSTEM_SETTINGS = {
+  rowHeight: 56,
+  tableWidth: 1180,
+  tableHeight: 620,
+  pageSize: 30,
+};
 
 async function getClientSecurityContext() {
   let ipAddress = localStorage.getItem("dfarm_client_ip") || "";
@@ -96,10 +103,21 @@ function getSavedAppPage() {
   }
 }
 
+function getSavedSystemSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("dfarm_system_settings") || "{}");
+    return { ...DEFAULT_SYSTEM_SETTINGS, ...saved };
+  } catch {
+    return DEFAULT_SYSTEM_SETTINGS;
+  }
+}
+
 export default function App() {
   enforceProductionHttps();
 
   const [page, setPage] = React.useState(getSavedAppPage);
+
+  const [systemSettings, setSystemSettings] = React.useState(getSavedSystemSettings);
 
   const [products, setProducts] = React.useState([]);
 
@@ -221,6 +239,10 @@ export default function App() {
       console.log(err);
     }
   }, [page]);
+
+  React.useEffect(() => {
+    localStorage.setItem("dfarm_system_settings", JSON.stringify(systemSettings));
+  }, [systemSettings]);
 
   React.useEffect(() => {
     if (!isLogin) return undefined;
@@ -1682,50 +1704,82 @@ export default function App() {
     }
   };
 
-  const exportAuditLogsJson = () => {
+  const exportSystemJson = () => {
     try {
-      const payload = JSON.stringify(auditLogs, null, 2);
+      const payload = JSON.stringify({
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        settings: systemSettings,
+        products,
+        salesHistory,
+        users,
+        auditLogs,
+      }, null, 2);
       const blob = new Blob([payload], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `audit-logs-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      link.download = `dfarm-system-backup-${new Date().toISOString().slice(0, 10)}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      writeAuditLog({ action: "EXPORT_AUDIT_LOG_BACKUP", targetType: "auditLogs", newData: { rows: auditLogs.length } });
+      writeAuditLog({ action: "EXPORT_SYSTEM_BACKUP", targetType: "system", newData: { products: products.length, salesHistory: salesHistory.length, users: users.length, auditLogs: auditLogs.length } });
     } catch (err) {
       console.log(err);
-      alert("Export Audit Log JSON ไม่สำเร็จ");
+      alert("Export JSON ไม่สำเร็จ");
     }
   };
 
-  const importAuditLogsJson = async (records) => {
-    const rows = Array.isArray(records) ? records : records?.auditLogs;
-    if (!Array.isArray(rows)) {
-      alert("ไฟล์ JSON ต้องเป็นรายการ Audit Log");
+  const importSystemJson = async (backupData) => {
+    if (!backupData || typeof backupData !== "object") {
+      alert("ไฟล์ JSON ไม่ถูกต้อง");
       return;
     }
 
     try {
-      let imported = 0;
-      for (const record of rows) {
+      const productRows = Array.isArray(backupData.products) ? backupData.products : [];
+      const saleRows = Array.isArray(backupData.salesHistory) ? backupData.salesHistory : [];
+      const userRows = Array.isArray(backupData.users) ? backupData.users : [];
+      const auditRows = Array.isArray(backupData.auditLogs) ? backupData.auditLogs : (Array.isArray(backupData) ? backupData : []);
+
+      for (const product of productRows) {
+        const id = product.id || product.barcode || createClientId("product_backup");
+        await setDoc(doc(db, "products", String(id)), product, { merge: true });
+      }
+
+      for (const sale of saleRows) {
+        const id = sale.id || sale.offlineId || createClientId("sale_backup");
+        await setDoc(doc(db, "salesHistory", String(id)), sale, { merge: true });
+      }
+
+      for (const user of userRows) {
+        const id = user.id || user.username || createClientId("user_backup");
+        await setDoc(doc(db, "users", String(id)), user, { merge: true });
+      }
+
+      for (const record of auditRows) {
         const auditLogId = record.auditLogId || record.id || createClientId("audit_backup");
         await setDoc(doc(db, "auditLogs", String(auditLogId)), {
           ...record,
           auditLogId: String(auditLogId),
           importedAt: new Date().toISOString(),
         }, { merge: true });
-        imported += 1;
       }
 
-      await writeAuditLog({ action: "IMPORT_AUDIT_LOG_BACKUP", targetType: "auditLogs", newData: { rows: imported } });
+      if (backupData.settings) {
+        setSystemSettings((prev) => ({ ...prev, ...backupData.settings }));
+      }
+
+      await writeAuditLog({ action: "IMPORT_SYSTEM_BACKUP", targetType: "system", newData: { products: productRows.length, salesHistory: saleRows.length, users: userRows.length, auditLogs: auditRows.length } });
+      await loadProducts();
+      await loadSales();
+      await loadUsers();
       await loadAuditLogs();
-      alert(`Import Audit Log JSON สำเร็จ ${imported} รายการ`);
+      alert("Import JSON สำเร็จ");
     } catch (err) {
       console.log(err);
-      alert("Import Audit Log JSON ไม่สำเร็จ");
+      alert("Import JSON ไม่สำเร็จ");
     }
   };
 
@@ -1820,6 +1874,7 @@ export default function App() {
           setCancelPassword={setCancelPassword}
           approveCancelBill={approveCancelBill}
           reprintBill={reprintBill}
+          systemSettings={systemSettings}
         />
       )}
       {page === "summary" && (
@@ -1863,8 +1918,15 @@ export default function App() {
       {page === "audit" && (role === "Admin" || role === "Audit") && (
         <AuditLogPage
           auditLogs={auditLogs}
-          exportAuditLogsJson={exportAuditLogsJson}
-          importAuditLogsJson={importAuditLogsJson}
+          systemSettings={systemSettings}
+        />
+      )}
+      {page === "settings" && (role === "Admin" || role === "Audit") && (
+        <SettingsPage
+          systemSettings={systemSettings}
+          setSystemSettings={setSystemSettings}
+          exportSystemJson={exportSystemJson}
+          importSystemJson={importSystemJson}
         />
       )}
 

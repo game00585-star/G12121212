@@ -3,8 +3,6 @@ import Pagination from "../components/Pagination";
 import { cardStyle, inputStyle, saveBtn, cancelBtn, modalOverlay, modalBox, printBtn } from "../styles/uiStyles";
 import { calcSaleRow, fieldNames, formatPromo, getField, isCanceledStatus, numberField } from "../utils/salesSummary";
 
-const DEFAULT_PAGE_SIZE = 30;
-
 function productText(item) {
   return String(getField(item, fieldNames.product) || "").toLowerCase();
 }
@@ -23,11 +21,14 @@ export default function HistoryPage(props) {
     historySearch, setHistorySearch, startDate, setStartDate, endDate, setEndDate,
     role, branchFilter, setBranchFilter, salesHistory, currentUser, exportExcel,
     setCancelBillNo, cancelBillNo, cancelPassword, setCancelPassword,
-    approveCancelBill, reprintBill,
+    approveCancelBill, reprintBill, systemSettings,
   } = props;
   const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(DEFAULT_PAGE_SIZE);
   const [searchMode, setSearchMode] = React.useState("all");
+  const pageSize = Number(systemSettings?.pageSize || 30);
+  const rowHeight = Number(systemSettings?.rowHeight || 56);
+  const tableWidth = Number(systemSettings?.tableWidth || 1180);
+  const tableHeight = Number(systemSettings?.tableHeight || 620);
 
   const bills = React.useMemo(() => {
     const grouped = salesHistory.filter((item) => {
@@ -56,7 +57,7 @@ export default function HistoryPage(props) {
     return Object.values(grouped).reverse();
   }, [branchFilter, currentUser?.branch, endDate, historySearch, role, salesHistory, searchMode, startDate]);
 
-  const safePageSize = Math.max(5, Number(pageSize || DEFAULT_PAGE_SIZE));
+  const safePageSize = Math.max(5, Number(pageSize || 30));
   const totalPages = Math.max(1, Math.ceil(bills.length / safePageSize));
   const safePage = Math.min(page, totalPages);
   const pageBills = bills.slice((safePage - 1) * safePageSize, safePage * safePageSize);
@@ -105,13 +106,6 @@ export default function HistoryPage(props) {
         )}
       </div>
 
-      <details style={{ marginTop: 14 }}>
-        <summary style={{ cursor: "pointer", fontWeight: 900 }}>ตั้งค่า</summary>
-        <div className="filter-grid" style={{ marginTop: 6 }}>
-          <input type="number" min="5" step="5" placeholder="จำนวนบิลต่อหน้า" value={pageSize} onChange={(e) => setPageSize(e.target.value)} style={inputStyle} />
-        </div>
-      </details>
-
       {pageBills.map((bill, index) => {
         const first = bill[0];
         const billNo = getField(first, fieldNames.billNo);
@@ -133,8 +127,8 @@ export default function HistoryPage(props) {
                 {!isCanceledStatus(status) && <button style={cancelBtn} onClick={() => setCancelBillNo(String(billNo))}>ยกเลิกบิล</button>}
               </div>
             </div>
-            <div className="data-table-wrap">
-              <table className="data-table sales-table">
+            <div className="data-table-wrap" style={{ maxHeight: tableHeight, overflow: "auto" }}>
+              <table className="data-table sales-table" style={{ minWidth: tableWidth }}>
                 <thead>
                   <tr>
                     <th>Barcode</th>
@@ -155,7 +149,7 @@ export default function HistoryPage(props) {
                   {bill.map((item, rowIndex) => {
                     const row = calcSaleRow(item);
                     return (
-                      <tr key={rowIndex}>
+                      <tr key={rowIndex} style={{ height: rowHeight }}>
                         <td>{getField(item, fieldNames.barcode)}</td>
                         <td>{getField(item, fieldNames.product)}</td>
                         <td>{row.soldQty}</td>

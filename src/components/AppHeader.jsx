@@ -20,6 +20,9 @@ const IconUsers = () => (
 const IconAudit = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 5 3 8.5 7 10 4-1.5 7-5 7-10V6l-7-3Z" /><path d="M9 12l2 2 4-5" /></svg>
 );
+const IconSettings = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" /><path d="M19.4 15a1.8 1.8 0 0 0 .4 2l.1.1-2 3.4-.2-.1a1.8 1.8 0 0 0-2.1.2l-.3.2a1.8 1.8 0 0 0-.9 1.8v.4h-4v-.4a1.8 1.8 0 0 0-.9-1.8l-.3-.2a1.8 1.8 0 0 0-2.1-.2l-.2.1-2-3.4.1-.1a1.8 1.8 0 0 0 .4-2l-.1-.4A1.8 1.8 0 0 0 3.8 13H3V9h.8a1.8 1.8 0 0 0 1.5-1.2l.1-.4a1.8 1.8 0 0 0-.4-2l-.1-.1 2-3.4.2.1a1.8 1.8 0 0 0 2.1-.2l.3-.2A1.8 1.8 0 0 0 10.4 0h4a1.8 1.8 0 0 0 .9 1.6l.3.2a1.8 1.8 0 0 0 2.1.2l.2-.1 2 3.4-.1.1a1.8 1.8 0 0 0-.4 2l.1.4A1.8 1.8 0 0 0 21.2 9h.8v4h-.8a1.8 1.8 0 0 0-1.7 1.6l-.1.4Z" /></svg>
+);
 const IconLogout = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5" /><path d="M15 12H3" /><path d="M13 4h6v16h-6" /></svg>
 );
@@ -34,6 +37,7 @@ export default function AppHeader({ employeeName, branch, role, isOffline, page,
     { key: "price", label: "สินค้า", Icon: IconBox },
     ...(canManageUsers ? [{ key: "users", label: "ผู้ใช้งาน", Icon: IconUsers }] : []),
     ...(canManageUsers ? [{ key: "audit", label: "Audit Log", Icon: IconAudit }] : []),
+    ...(canManageUsers ? [{ key: "settings", label: "ตั้งค่า", Icon: IconSettings }] : []),
   ];
 
   return (

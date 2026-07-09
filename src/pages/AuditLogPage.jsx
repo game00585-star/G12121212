@@ -4,12 +4,8 @@ import Pagination from "../components/Pagination";
 import {
   cardStyle,
   inputStyle,
-  saveBtn,
-  printBtn,
   cancelBtn,
 } from "../styles/uiStyles";
-
-const DEFAULT_PAGE_SIZE = 30;
 
 const auditTh = {
   background: "#fff4bf",
@@ -55,9 +51,8 @@ function actionColor(action) {
   return "#f1f5f9";
 }
 
-export default function AuditLogPage({ auditLogs, exportAuditLogsJson, importAuditLogsJson }) {
+export default function AuditLogPage({ auditLogs, systemSettings }) {
   const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = React.useState("");
   const [filters, setFilters] = React.useState({
     time: "",
@@ -69,9 +64,10 @@ export default function AuditLogPage({ auditLogs, exportAuditLogsJson, importAud
     targetId: "",
     ipAddress: "",
   });
-  const [rowHeight, setRowHeight] = React.useState(56);
-  const [tableWidth, setTableWidth] = React.useState(1180);
-  const [tableHeight, setTableHeight] = React.useState(620);
+  const rowHeight = Number(systemSettings?.rowHeight || 56);
+  const tableWidth = Number(systemSettings?.tableWidth || 1180);
+  const tableHeight = Number(systemSettings?.tableHeight || 620);
+  const pageSize = Number(systemSettings?.pageSize || 30);
 
   const filteredLogs = React.useMemo(() => {
     const searchText = cleanText(search);
@@ -79,7 +75,6 @@ export default function AuditLogPage({ auditLogs, exportAuditLogsJson, importAud
       const timeText = cleanText(`${log.createdAt || ""} ${formatDate(log.createdAt)}`);
       const values = {
         time: timeText,
-        userId: cleanText(log.userId),
         username: cleanText(log.username),
         role: cleanText(log.role),
         branch: cleanText(log.branch),
@@ -102,7 +97,7 @@ export default function AuditLogPage({ auditLogs, exportAuditLogsJson, importAud
     });
   }, [auditLogs, filters, search]);
 
-  const safePageSize = Math.max(5, Number(pageSize || DEFAULT_PAGE_SIZE));
+  const safePageSize = Math.max(5, Number(pageSize || 30));
   const totalPages = Math.max(1, Math.ceil(filteredLogs.length / safePageSize));
   const safePage = Math.min(page, totalPages);
   const pageLogs = filteredLogs.slice((safePage - 1) * safePageSize, safePage * safePageSize);
@@ -111,23 +106,6 @@ export default function AuditLogPage({ auditLogs, exportAuditLogsJson, importAud
 
   const updateFilter = (name, value) => {
     setFilters((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleImport = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const parsed = JSON.parse(String(reader.result || "[]"));
-        await importAuditLogsJson(parsed);
-        event.target.value = "";
-      } catch (err) {
-        console.log(err);
-        alert("อ่านไฟล์ JSON ไม่สำเร็จ");
-      }
-    };
-    reader.readAsText(file, "utf-8");
   };
 
   const clearSearch = () => {
@@ -170,29 +148,11 @@ export default function AuditLogPage({ auditLogs, exportAuditLogsJson, importAud
         <input placeholder="IP" value={filters.ipAddress} onChange={(e) => updateFilter("ipAddress", e.target.value)} style={inputStyle} />
       </div>
 
-      <details style={{ marginTop: 14 }}>
-        <summary style={{ cursor: "pointer", fontWeight: 900 }}>ตั้งค่า</summary>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-          <button type="button" style={saveBtn} onClick={exportAuditLogsJson}>Backup JSON</button>
-          <label style={{ ...printBtn, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-            Import JSON
-            <input type="file" accept="application/json,.json" onChange={handleImport} style={{ display: "none" }} />
-          </label>
-        </div>
-        <div className="filter-grid" style={{ marginTop: 6 }}>
-          <input type="number" min="5" step="5" placeholder="จำนวนต่อหน้า" value={pageSize} onChange={(e) => setPageSize(e.target.value)} style={inputStyle} />
-          <input type="number" min="44" step="4" placeholder="ความสูงแถว" value={rowHeight} onChange={(e) => setRowHeight(e.target.value)} style={inputStyle} />
-          <input type="number" min="900" step="20" placeholder="ความกว้างตาราง" value={tableWidth} onChange={(e) => setTableWidth(e.target.value)} style={inputStyle} />
-          <input type="number" min="240" step="20" placeholder="ความสูงตาราง" value={tableHeight} onChange={(e) => setTableHeight(e.target.value)} style={inputStyle} />
-        </div>
-      </details>
-
-      <div style={{ overflow: "auto", width: "100%", maxHeight: Number(tableHeight || 620), border: "1px solid #e5e7eb", borderRadius: 12, marginTop: 16 }}>
-        <table style={{ width: "100%", minWidth: Number(tableWidth || 1180), borderCollapse: "separate", borderSpacing: 0 }}>
+      <div style={{ overflow: "auto", width: "100%", maxHeight: tableHeight, border: "1px solid #e5e7eb", borderRadius: 12, marginTop: 16 }}>
+        <table style={{ width: "100%", minWidth: tableWidth, borderCollapse: "separate", borderSpacing: 0 }}>
           <thead>
             <tr>
               <th style={auditTh}>เวลา</th>
-              <th style={auditTh}>User ID</th>
               <th style={auditTh}>Username</th>
               <th style={auditTh}>Role</th>
               <th style={auditTh}>Branch</th>
@@ -204,9 +164,8 @@ export default function AuditLogPage({ auditLogs, exportAuditLogsJson, importAud
           </thead>
           <tbody>
             {pageLogs.map((log, index) => (
-              <tr key={log.id || log.auditLogId || index} style={{ background: index % 2 === 0 ? "#ffffff" : "#f8fafc", minHeight: Number(rowHeight || 56) }}>
-                <td style={{ ...auditTd, height: Number(rowHeight || 56) }}>{formatDate(log.createdAt)}</td>
-                <td style={auditTd}>{log.userId || "-"}</td>
+              <tr key={log.id || log.auditLogId || index} style={{ background: index % 2 === 0 ? "#ffffff" : "#f8fafc", minHeight: rowHeight }}>
+                <td style={{ ...auditTd, height: rowHeight }}>{formatDate(log.createdAt)}</td>
                 <td style={{ ...auditTd, fontWeight: 800 }}>{log.username || "-"}</td>
                 <td style={auditTd}>{log.role || "-"}</td>
                 <td style={auditTd}>{log.branch || "-"}</td>
@@ -218,7 +177,7 @@ export default function AuditLogPage({ auditLogs, exportAuditLogsJson, importAud
             ))}
             {pageLogs.length === 0 && (
               <tr>
-                <td style={auditTd} colSpan="9">ยังไม่มี Audit Log</td>
+                <td style={auditTd} colSpan="8">ยังไม่มี Audit Log</td>
               </tr>
             )}
           </tbody>

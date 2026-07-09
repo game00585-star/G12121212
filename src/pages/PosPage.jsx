@@ -13,14 +13,14 @@ const POS_CATEGORIES = [
   { name: "ไม่คิด", icon: "□" },
   { name: "เนื้อหมูสด", icon: "🥩" },
   { name: "เนื้อไก่สด", icon: "🍗" },
-  { name: "เนื้อวัว/เนื้อหมู แช่แข็ง", icon: "🧊" },
+  { name: "เนื้อวัว/เนื้อหมู แช่แข็ง", icon: "🧊", image: "/category-assets/beef-pork-frozen.png" },
   { name: "ไข่ ไข่แปรรูป", icon: "🥚" },
-  { name: "เนื้อเป็ด/เนื้อไก่ แช่แข็ง", icon: "❄️" },
+  { name: "เนื้อเป็ด/เนื้อไก่ แช่แข็ง", icon: "❄️", image: "/category-assets/duck-chicken-frozen.png" },
   { name: "อาหารทะเลสด", icon: "🦐" },
   { name: "เนื้อหมูแปรรูป+ตักขาย", icon: "🥓" },
-  { name: "อาหารแช่แข็ง", icon: "🧊" },
+  { name: "อาหารแช่แข็ง", icon: "🧊", image: "/category-assets/frozen-food.png" },
   { name: "หมูแช่แข็งเทขาย", icon: "🍖" },
-  { name: "อาหารแช่เย็น", icon: "🥗" },
+  { name: "อาหารแช่เย็น", icon: "🥗", image: "/category-assets/chilled-food.png" },
   { name: "Dry Grocery", icon: "🛒" },
   { name: "Household", icon: "🧴" },
   { name: "ผักสด", icon: "🥬" },
@@ -133,10 +133,12 @@ export default function PosPage(props) {
           <div className="pos-category-strip" aria-label="หมวดสินค้า">
             {POS_CATEGORIES.map((category) => (
               <button key={category.name} type="button" className={`pos-category-button${activeCategory === category.name ? " active" : ""}`} onClick={() => handleCategoryClick(category.name)}>
-                <span className={`pos-category-art${category.name.includes("แช่") ? " frozen" : ""}`} aria-hidden="true">
-                  <span className="pos-category-blob" />
-                  <span className="pos-category-main-icon">{category.icon}</span>
-                  {category.name.includes("แช่") && <span className="pos-category-snow">❄</span>}
+                <span className={`pos-category-art${category.image ? " has-image" : ""}${category.name.includes("แช่") ? " frozen" : ""}`} aria-hidden="true">
+                  {category.image ? <img src={category.image} alt="" className="pos-category-image" /> : <>
+                    <span className="pos-category-blob" />
+                    <span className="pos-category-main-icon">{category.icon}</span>
+                    {category.name.includes("แช่") && <span className="pos-category-snow">❄</span>}
+                  </>}
                 </span>
                 <span>{category.name}</span>
               </button>

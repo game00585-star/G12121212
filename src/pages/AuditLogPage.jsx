@@ -2,19 +2,30 @@ import React from "react";
 import Pagination from "../components/Pagination";
 import { cardStyle } from "../styles/uiStyles";
 
-function formatDate(dateString) {
-  if (!dateString) return "-";
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date)) return String(dateString);
-    return date.toLocaleString("th-TH", { timeZone: "Asia/Bangkok" });
-  } catch {
-    return String(dateString);
-  }
-}
-
 function cleanText(value) {
   return String(value || "").toLowerCase().trim();
+}
+
+function getBangkokParts(dateString) {
+  if (!dateString) return { dateText: "-", timeText: "-", inputDate: "" };
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date)) return { dateText: String(dateString), timeText: "-", inputDate: "" };
+    const inputParts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Bangkok",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(date);
+    const inputValues = Object.fromEntries(inputParts.map((part) => [part.type, part.value]));
+    return {
+      dateText: date.toLocaleDateString("th-TH", { timeZone: "Asia/Bangkok" }),
+      timeText: date.toLocaleTimeString("th-TH", { timeZone: "Asia/Bangkok", hour12: false }),
+      inputDate: `${inputValues.year}-${inputValues.month}-${inputValues.day}`,
+    };
+  } catch {
+    return { dateText: String(dateString), timeText: "-", inputDate: "" };
+  }
 }
 
 function IconShield() {
@@ -43,8 +54,11 @@ function IconFilter() {
 }
 
 function logValues(log) {
+  const parts = getBangkokParts(log.createdAt);
   return {
-    time: `${log.createdAt || ""} ${formatDate(log.createdAt)}`,
+    date: parts.dateText,
+    inputDate: parts.inputDate,
+    time: parts.timeText,
     username: log.username || "",
     role: log.role || "",
     branch: log.branch || "",
@@ -72,6 +86,7 @@ export default function AuditLogPage({ auditLogs, systemSettings }) {
   const [search, setSearch] = React.useState("");
   const [filterOpen, setFilterOpen] = React.useState(true);
   const [filters, setFilters] = React.useState({
+    date: "",
     time: "",
     username: "",
     role: "",
@@ -90,12 +105,28 @@ export default function AuditLogPage({ auditLogs, systemSettings }) {
     const searchText = cleanText(search);
     return auditLogs.filter((log) => {
       const values = logValues(log);
-      const tableText = Object.values(values).join(" ");
+      const tableText = [
+        values.date,
+        values.time,
+        values.username,
+        values.role,
+        values.branch,
+        values.action,
+        values.targetType,
+        values.targetId,
+        values.ipAddress,
+      ].join(" ");
       const searchOk = searchText === "" || cleanText(tableText).includes(searchText);
-      const filterOk = Object.entries(filters).every(([key, value]) => {
-        if (!value) return true;
-        return cleanText(values[key]).includes(cleanText(value));
-      });
+      const filterOk =
+        (!filters.date || values.inputDate === filters.date) &&
+        (!filters.time || values.time === filters.time) &&
+        (!filters.username || values.username === filters.username) &&
+        (!filters.role || values.role === filters.role) &&
+        (!filters.branch || values.branch === filters.branch) &&
+        (!filters.action || values.action === filters.action) &&
+        (!filters.targetType || values.targetType === filters.targetType) &&
+        (!filters.targetId || values.targetId === filters.targetId) &&
+        (!filters.ipAddress || values.ipAddress === filters.ipAddress);
       return searchOk && filterOk;
     });
   }, [auditLogs, filters, search]);
@@ -113,6 +144,7 @@ export default function AuditLogPage({ auditLogs, systemSettings }) {
   const clearSearch = () => {
     setSearch("");
     setFilters({
+      date: "",
       time: "",
       username: "",
       role: "",
@@ -162,6 +194,10 @@ export default function AuditLogPage({ auditLogs, systemSettings }) {
         </button>
         {filterOpen && (
           <div className="report-filter-grid audit-filter-grid">
+            <label>
+              วันที่
+              <input type="date" value={filters.date} onChange={(e) => updateFilter("date", e.target.value)} />
+            </label>
             {selectFilter("time", "เวลา")}
             {selectFilter("username", "Username")}
             {selectFilter("role", "Role")}
@@ -179,6 +215,7 @@ export default function AuditLogPage({ auditLogs, systemSettings }) {
         <table className="data-table audit-table" style={{ minWidth: tableWidth }}>
           <thead>
             <tr>
+              <th>วันที่</th>
               <th>เวลา</th>
               <th>Username</th>
               <th>Role</th>
@@ -190,21 +227,25 @@ export default function AuditLogPage({ auditLogs, systemSettings }) {
             </tr>
           </thead>
           <tbody>
-            {pageLogs.map((log, index) => (
-              <tr key={log.id || log.auditLogId || index} style={{ height: rowHeight }}>
-                <td>{formatDate(log.createdAt)}</td>
-                <td><strong>{log.username || "-"}</strong></td>
-                <td>{log.role || "-"}</td>
-                <td>{log.branch || "-"}</td>
-                <td><span className={`audit-action-pill ${actionClass(log.action)}`}>{log.action || "-"}</span></td>
-                <td>{log.targetType || "-"}</td>
-                <td>{log.targetId || "-"}</td>
-                <td>{log.ipAddress || "-"}</td>
-              </tr>
-            ))}
+            {pageLogs.map((log, index) => {
+              const values = logValues(log);
+              return (
+                <tr key={log.id || log.auditLogId || index} style={{ height: rowHeight }}>
+                  <td>{values.date}</td>
+                  <td>{values.time}</td>
+                  <td><strong>{log.username || "-"}</strong></td>
+                  <td>{log.role || "-"}</td>
+                  <td>{log.branch || "-"}</td>
+                  <td><span className={`audit-action-pill ${actionClass(log.action)}`}>{log.action || "-"}</span></td>
+                  <td>{log.targetType || "-"}</td>
+                  <td>{log.targetId || "-"}</td>
+                  <td>{log.ipAddress || "-"}</td>
+                </tr>
+              );
+            })}
             {pageLogs.length === 0 && (
               <tr>
-                <td colSpan="8">ยังไม่มี Audit Log</td>
+                <td colSpan="9">ยังไม่มี Audit Log</td>
               </tr>
             )}
           </tbody>

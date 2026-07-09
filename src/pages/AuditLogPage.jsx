@@ -1,32 +1,6 @@
 import React from "react";
 import Pagination from "../components/Pagination";
-
-import {
-  cardStyle,
-  inputStyle,
-  cancelBtn,
-} from "../styles/uiStyles";
-
-const auditTh = {
-  background: "#fff4bf",
-  color: "#0f172a",
-  padding: "12px 14px",
-  borderBottom: "1px solid #e7d98a",
-  textAlign: "left",
-  fontSize: 14,
-  fontWeight: 900,
-  whiteSpace: "nowrap",
-};
-
-const auditTd = {
-  padding: "12px 14px",
-  borderBottom: "1px solid #e5e7eb",
-  color: "#111827",
-  fontSize: 14,
-  lineHeight: 1.4,
-  verticalAlign: "middle",
-  whiteSpace: "nowrap",
-};
+import { cardStyle } from "../styles/uiStyles";
 
 function formatDate(dateString) {
   if (!dateString) return "-";
@@ -43,17 +17,60 @@ function cleanText(value) {
   return String(value || "").toLowerCase().trim();
 }
 
-function actionColor(action) {
+function IconShield() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 3 5 6v5c0 4.5 2.8 8.6 7 10 4.2-1.4 7-5.5 7-10V6l-7-3Z" />
+    </svg>
+  );
+}
+
+function IconSearch() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" />
+      <path d="m16 16 4 4" />
+    </svg>
+  );
+}
+
+function IconFilter() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 5h16l-6 7v5l-4 2v-7L4 5Z" />
+    </svg>
+  );
+}
+
+function logValues(log) {
+  return {
+    time: `${log.createdAt || ""} ${formatDate(log.createdAt)}`,
+    username: log.username || "",
+    role: log.role || "",
+    branch: log.branch || "",
+    action: log.action || "",
+    targetType: log.targetType || "",
+    targetId: log.targetId || "",
+    ipAddress: log.ipAddress || "",
+  };
+}
+
+function actionClass(action) {
   const text = String(action || "").toLowerCase();
-  if (text.includes("failed") || text.includes("cancel")) return "#fee2e2";
-  if (text.includes("login") || text.includes("create")) return "#dcfce7";
-  if (text.includes("export") || text.includes("import") || text.includes("print")) return "#dbeafe";
-  return "#f1f5f9";
+  if (text.includes("failed") || text.includes("cancel")) return "danger";
+  if (text.includes("login") || text.includes("create")) return "success";
+  if (text.includes("export") || text.includes("import") || text.includes("print") || text.includes("edit")) return "info";
+  return "muted";
+}
+
+function uniqueOptions(logs, field) {
+  return [...new Set(logs.map((log) => String(logValues(log)[field] || "").trim()))].filter(Boolean);
 }
 
 export default function AuditLogPage({ auditLogs, systemSettings }) {
   const [page, setPage] = React.useState(1);
   const [search, setSearch] = React.useState("");
+  const [filterOpen, setFilterOpen] = React.useState(true);
   const [filters, setFilters] = React.useState({
     time: "",
     username: "",
@@ -67,49 +84,30 @@ export default function AuditLogPage({ auditLogs, systemSettings }) {
   const rowHeight = Number(systemSettings?.rowHeight || 56);
   const tableWidth = Number(systemSettings?.tableWidth || 1180);
   const tableHeight = Number(systemSettings?.tableHeight || 620);
-  const pageSize = Number(systemSettings?.pageSize || 30);
+  const pageSize = Math.max(5, Number(systemSettings?.pageSize || 30));
 
   const filteredLogs = React.useMemo(() => {
     const searchText = cleanText(search);
     return auditLogs.filter((log) => {
-      const timeText = cleanText(`${log.createdAt || ""} ${formatDate(log.createdAt)}`);
-      const values = {
-        time: timeText,
-        username: cleanText(log.username),
-        role: cleanText(log.role),
-        branch: cleanText(log.branch),
-        action: cleanText(log.action),
-        targetType: cleanText(log.targetType),
-        targetId: cleanText(log.targetId),
-        ipAddress: cleanText(log.ipAddress),
-      };
-      const searchOk = searchText === "" || Object.values(values).some((value) => value.includes(searchText));
-      const filterOk =
-        values.time.includes(cleanText(filters.time)) &&
-        values.username.includes(cleanText(filters.username)) &&
-        values.role.includes(cleanText(filters.role)) &&
-        values.branch.includes(cleanText(filters.branch)) &&
-        values.action.includes(cleanText(filters.action)) &&
-        values.targetType.includes(cleanText(filters.targetType)) &&
-        values.targetId.includes(cleanText(filters.targetId)) &&
-        values.ipAddress.includes(cleanText(filters.ipAddress));
+      const values = logValues(log);
+      const tableText = Object.values(values).join(" ");
+      const searchOk = searchText === "" || cleanText(tableText).includes(searchText);
+      const filterOk = Object.entries(filters).every(([key, value]) => {
+        if (!value) return true;
+        return cleanText(values[key]).includes(cleanText(value));
+      });
       return searchOk && filterOk;
     });
   }, [auditLogs, filters, search]);
 
-  const safePageSize = Math.max(5, Number(pageSize || 30));
-  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / safePageSize));
+  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / pageSize));
   const safePage = Math.min(page, totalPages);
-  const pageLogs = filteredLogs.slice((safePage - 1) * safePageSize, safePage * safePageSize);
+  const pageLogs = filteredLogs.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-  React.useEffect(() => setPage(1), [filteredLogs.length, safePageSize]);
+  React.useEffect(() => setPage(1), [filteredLogs.length, pageSize]);
 
   const updateFilter = (name, value) => {
     setFilters((prev) => ({ ...prev, [name]: value }));
-  };
-  const auditCellStyle = {
-    ...auditTd,
-    height: rowHeight,
   };
 
   const clearSearch = () => {
@@ -126,62 +124,87 @@ export default function AuditLogPage({ auditLogs, systemSettings }) {
     });
   };
 
+  const selectFilter = (key, label) => (
+    <label>
+      {label}
+      <select value={filters[key]} onChange={(e) => updateFilter(key, e.target.value)}>
+        <option value="">ทั้งหมด</option>
+        {uniqueOptions(auditLogs, key).map((item) => <option key={item} value={item}>{item}</option>)}
+      </select>
+    </label>
+  );
+
   return (
-    <div style={cardStyle}>
-      <div className="page-head">
-        <div>
-          <h2>Audit Log</h2>
-          <p>แสดง {pageLogs.length} จาก {filteredLogs.length} รายการ</p>
+    <div style={cardStyle} className="report-page">
+      <div className="report-head">
+        <div className="report-title">
+          <span className="report-icon"><IconShield /></span>
+          <div>
+            <h2>Audit Log</h2>
+            <p>แสดง {pageLogs.length} จาก {filteredLogs.length} รายการ</p>
+          </div>
         </div>
       </div>
 
-      <div className="filter-grid">
-        <input placeholder="ค้นหาเรียลไทม์" value={search} onChange={(e) => setSearch(e.target.value)} style={inputStyle} />
-        <button type="button" style={{ ...cancelBtn, marginTop: 15 }} onClick={clearSearch}>ล้างค้นหา</button>
+      <div className="report-search-row">
+        <div className="report-search-box">
+          <IconSearch />
+          <input placeholder="ค้นหา" value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        <button type="button" className="report-search-button" onClick={() => setPage(1)}><IconSearch />ค้นหา</button>
       </div>
 
-      <div style={{ marginTop: 12, fontWeight: 900 }}>Filter</div>
-      <div className="filter-grid">
-        <input placeholder="เวลา" value={filters.time} onChange={(e) => updateFilter("time", e.target.value)} style={inputStyle} />
-        <input placeholder="Username" value={filters.username} onChange={(e) => updateFilter("username", e.target.value)} style={inputStyle} />
-        <input placeholder="Role" value={filters.role} onChange={(e) => updateFilter("role", e.target.value)} style={inputStyle} />
-        <input placeholder="Branch" value={filters.branch} onChange={(e) => updateFilter("branch", e.target.value)} style={inputStyle} />
-        <input placeholder="Action" value={filters.action} onChange={(e) => updateFilter("action", e.target.value)} style={inputStyle} />
-        <input placeholder="Target Type" value={filters.targetType} onChange={(e) => updateFilter("targetType", e.target.value)} style={inputStyle} />
-        <input placeholder="Target ID" value={filters.targetId} onChange={(e) => updateFilter("targetId", e.target.value)} style={inputStyle} />
-        <input placeholder="IP" value={filters.ipAddress} onChange={(e) => updateFilter("ipAddress", e.target.value)} style={inputStyle} />
+      <div className="report-filter-card">
+        <button type="button" className="report-filter-title" onClick={() => setFilterOpen((next) => !next)}>
+          <IconFilter />
+          <span>Filter</span>
+          <small>{filterOpen ? "ซ่อน" : "แสดง"}</small>
+        </button>
+        {filterOpen && (
+          <div className="report-filter-grid audit-filter-grid">
+            {selectFilter("time", "เวลา")}
+            {selectFilter("username", "Username")}
+            {selectFilter("role", "Role")}
+            {selectFilter("branch", "Branch")}
+            {selectFilter("action", "Action")}
+            {selectFilter("targetType", "Target Type")}
+            {selectFilter("targetId", "Target ID")}
+            {selectFilter("ipAddress", "IP")}
+            <button type="button" className="report-clear-button" onClick={clearSearch}>ล้างค่า</button>
+          </div>
+        )}
       </div>
 
-      <div style={{ overflow: "auto", width: "100%", maxHeight: tableHeight, border: "1px solid #e5e7eb", borderRadius: 12, marginTop: 16 }}>
-        <table style={{ width: "100%", minWidth: tableWidth, borderCollapse: "separate", borderSpacing: 0 }}>
+      <div className="data-table-wrap audit-table-wrap" style={{ maxHeight: tableHeight, overflow: "auto" }}>
+        <table className="data-table audit-table" style={{ minWidth: tableWidth }}>
           <thead>
             <tr>
-              <th style={auditTh}>เวลา</th>
-              <th style={auditTh}>Username</th>
-              <th style={auditTh}>Role</th>
-              <th style={auditTh}>Branch</th>
-              <th style={auditTh}>Action</th>
-              <th style={auditTh}>Target Type</th>
-              <th style={auditTh}>Target ID</th>
-              <th style={auditTh}>IP ผู้ใช้งาน</th>
+              <th>เวลา</th>
+              <th>Username</th>
+              <th>Role</th>
+              <th>Branch</th>
+              <th>Action</th>
+              <th>Target Type</th>
+              <th>Target ID</th>
+              <th>IP ผู้ใช้งาน</th>
             </tr>
           </thead>
           <tbody>
             {pageLogs.map((log, index) => (
-              <tr key={log.id || log.auditLogId || index} style={{ background: index % 2 === 0 ? "#ffffff" : "#f8fafc", minHeight: rowHeight }}>
-                <td style={auditCellStyle}>{formatDate(log.createdAt)}</td>
-                <td style={{ ...auditCellStyle, fontWeight: 800 }}>{log.username || "-"}</td>
-                <td style={auditCellStyle}>{log.role || "-"}</td>
-                <td style={auditCellStyle}>{log.branch || "-"}</td>
-                <td style={auditCellStyle}><span style={{ display: "inline-block", padding: "6px 10px", borderRadius: 999, background: actionColor(log.action), fontWeight: 800 }}>{log.action || "-"}</span></td>
-                <td style={auditCellStyle}>{log.targetType || "-"}</td>
-                <td style={auditCellStyle}>{log.targetId || "-"}</td>
-                <td style={auditCellStyle}>{log.ipAddress || "-"}</td>
+              <tr key={log.id || log.auditLogId || index} style={{ height: rowHeight }}>
+                <td>{formatDate(log.createdAt)}</td>
+                <td><strong>{log.username || "-"}</strong></td>
+                <td>{log.role || "-"}</td>
+                <td>{log.branch || "-"}</td>
+                <td><span className={`audit-action-pill ${actionClass(log.action)}`}>{log.action || "-"}</span></td>
+                <td>{log.targetType || "-"}</td>
+                <td>{log.targetId || "-"}</td>
+                <td>{log.ipAddress || "-"}</td>
               </tr>
             ))}
             {pageLogs.length === 0 && (
               <tr>
-                <td style={auditTd} colSpan="8">ยังไม่มี Audit Log</td>
+                <td colSpan="8">ยังไม่มี Audit Log</td>
               </tr>
             )}
           </tbody>

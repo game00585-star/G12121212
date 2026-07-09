@@ -3,10 +3,6 @@ import Pagination from "../components/Pagination";
 import { cardStyle, inputStyle, saveBtn, cancelBtn, modalOverlay, modalBox, printBtn } from "../styles/uiStyles";
 import { calcSaleRow, fieldNames, formatPromo, getField, isCanceledStatus, numberField } from "../utils/salesSummary";
 
-function productText(item) {
-  return String(getField(item, fieldNames.product) || "").toLowerCase();
-}
-
 function formatDate(value) {
   if (!value) return "-";
   try {
@@ -14,6 +10,56 @@ function formatDate(value) {
   } catch {
     return value;
   }
+}
+
+function cleanText(value) {
+  return String(value || "").toLowerCase().trim();
+}
+
+function IconBag() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 8V7a5 5 0 0 1 10 0v1" />
+      <path d="M5 8h14l-1 12H6L5 8Z" />
+    </svg>
+  );
+}
+
+function IconSearch() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" />
+      <path d="m16 16 4 4" />
+    </svg>
+  );
+}
+
+function IconFilter() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 5h16l-6 7v5l-4 2v-7L4 5Z" />
+    </svg>
+  );
+}
+
+function billSearchText(item) {
+  const row = calcSaleRow(item);
+  return [
+    getField(item, fieldNames.billNo),
+    getField(item, fieldNames.date),
+    formatDate(getField(item, fieldNames.date)),
+    getField(item, fieldNames.branch),
+    getField(item, fieldNames.employee),
+    getField(item, fieldNames.barcode),
+    getField(item, fieldNames.product),
+    formatPromo(item),
+    getField(item, fieldNames.status),
+    row.soldQty,
+    row.freeQty,
+    row.totalQty,
+    row.beforeDiscount,
+    row.netTotal,
+  ].join(" ");
 }
 
 export default function HistoryPage(props) {
@@ -25,29 +71,44 @@ export default function HistoryPage(props) {
   } = props;
   const [page, setPage] = React.useState(1);
   const [searchMode, setSearchMode] = React.useState("all");
-  const pageSize = Number(systemSettings?.pageSize || 30);
+  const [statusFilter, setStatusFilter] = React.useState("");
+  const [filterOpen, setFilterOpen] = React.useState(true);
+  const pageSize = Math.max(5, Number(systemSettings?.pageSize || 30));
   const rowHeight = Number(systemSettings?.rowHeight || 56);
   const tableWidth = Number(systemSettings?.tableWidth || 1180);
   const tableHeight = Number(systemSettings?.tableHeight || 620);
 
+  const branchOptions = React.useMemo(() => (
+    [...new Set(salesHistory.map((item) => getField(item, fieldNames.branch)))]
+      .filter(Boolean)
+  ), [salesHistory]);
+
+  const statusOptions = React.useMemo(() => (
+    [...new Set(salesHistory.map((item) => getField(item, fieldNames.status)))]
+      .filter(Boolean)
+  ), [salesHistory]);
+
   const bills = React.useMemo(() => {
+    const searchText = cleanText(historySearch);
     const grouped = salesHistory.filter((item) => {
       const billNo = String(getField(item, fieldNames.billNo) || "");
+      const barcode = String(getField(item, fieldNames.barcode) || "");
+      const product = String(getField(item, fieldNames.product) || "");
       const rawDate = getField(item, fieldNames.date);
       const itemDate = rawDate ? new Date(rawDate) : new Date();
       const branch = getField(item, fieldNames.branch);
+      const status = getField(item, fieldNames.status);
       const startOk = startDate === "" || itemDate >= new Date(startDate);
       const endOk = endDate === "" || itemDate <= new Date(endDate + " 23:59:59");
       const branchOk = role === "Admin" || role === "Audit" ? branchFilter === "" || branch === branchFilter : branch === currentUser?.branch;
-      const searchText = String(historySearch || "").toLowerCase().trim();
-      const billOk = billNo.toLowerCase().includes(searchText);
-      const productOk = productText(item).includes(searchText);
-      const searchOk =
-        searchText === "" ||
-        (searchMode === "bill" && billOk) ||
-        (searchMode === "product" && productOk) ||
-        (searchMode === "all" && (billOk || productOk));
-      return searchOk && startOk && endOk && branchOk;
+      const statusOk = statusFilter === "" || status === statusFilter;
+      const searchSource = searchMode === "bill"
+        ? billNo
+        : searchMode === "product"
+          ? `${barcode} ${product}`
+          : billSearchText(item);
+      const searchOk = searchText === "" || cleanText(searchSource).includes(searchText);
+      return searchOk && startOk && endOk && branchOk && statusOk;
     }).reduce((acc, item) => {
       const billNo = getField(item, fieldNames.billNo);
       if (!acc[billNo]) acc[billNo] = [];
@@ -55,14 +116,13 @@ export default function HistoryPage(props) {
       return acc;
     }, {});
     return Object.values(grouped).reverse();
-  }, [branchFilter, currentUser?.branch, endDate, historySearch, role, salesHistory, searchMode, startDate]);
+  }, [branchFilter, currentUser?.branch, endDate, historySearch, role, salesHistory, searchMode, startDate, statusFilter]);
 
-  const safePageSize = Math.max(5, Number(pageSize || 30));
-  const totalPages = Math.max(1, Math.ceil(bills.length / safePageSize));
+  const totalPages = Math.max(1, Math.ceil(bills.length / pageSize));
   const safePage = Math.min(page, totalPages);
-  const pageBills = bills.slice((safePage - 1) * safePageSize, safePage * safePageSize);
+  const pageBills = bills.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-  React.useEffect(() => setPage(1), [historySearch, startDate, endDate, branchFilter, searchMode, safePageSize]);
+  React.useEffect(() => setPage(1), [historySearch, startDate, endDate, branchFilter, searchMode, statusFilter, pageSize]);
 
   const clearSearch = () => {
     setHistorySearch("");
@@ -70,39 +130,72 @@ export default function HistoryPage(props) {
     setStartDate("");
     setEndDate("");
     setBranchFilter("");
+    setStatusFilter("");
   };
 
   return (
-    <div style={cardStyle}>
-      <div className="page-head">
-        <div>
-          <h2>รายการขาย</h2>
-          <p>แสดง {pageBills.length} จาก {bills.length} บิล</p>
+    <div style={cardStyle} className="report-page">
+      <div className="report-head">
+        <div className="report-title">
+          <span className="report-icon"><IconBag /></span>
+          <div>
+            <h2>รายการขาย</h2>
+            <p>แสดง {pageBills.length} จาก {bills.length} บิล</p>
+          </div>
         </div>
-        <button style={saveBtn} onClick={exportExcel}>Export Excel</button>
+        <button style={saveBtn} className="excel-button" onClick={exportExcel}>Export Excel</button>
       </div>
 
-      <div className="filter-grid">
-        <input placeholder="ค้นหาเลขบิล / ชื่อสินค้า" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} style={inputStyle} />
-        <button type="button" style={{ ...cancelBtn, marginTop: 15 }} onClick={clearSearch}>ล้างค้นหา</button>
+      <div className="report-search-row">
+        <div className="report-search-box">
+          <IconSearch />
+          <input placeholder="ค้นหาเลขบิล / ชื่อลูกค้า / Barcode / สินค้า" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} />
+        </div>
+        <button type="button" className="report-search-button" onClick={() => setPage(1)}><IconSearch />ค้นหา</button>
       </div>
 
-      <div style={{ marginTop: 12, fontWeight: 900 }}>Filter</div>
-      <div className="filter-grid">
-        <select value={searchMode} onChange={(e) => setSearchMode(e.target.value)} style={inputStyle}>
-          <option value="all">ค้นหาเลขบิล + ชื่อสินค้า</option>
-          <option value="bill">ค้นหาเลขบิล</option>
-          <option value="product">ค้นหาชื่อสินค้า</option>
-        </select>
-        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={inputStyle} />
-        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={inputStyle} />
-        {(role === "Admin" || role === "Audit") && (
-          <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} style={inputStyle}>
-            <option value="">ทุกสาขา</option>
-            {[...new Set(salesHistory.map((item) => getField(item, fieldNames.branch)))]
-              .filter(Boolean)
-              .map((branch, index) => <option key={index} value={branch}>{branch}</option>)}
-          </select>
+      <div className="report-filter-card">
+        <button type="button" className="report-filter-title" onClick={() => setFilterOpen((next) => !next)}>
+          <IconFilter />
+          <span>Filter</span>
+          <small>{filterOpen ? "ซ่อน" : "แสดง"}</small>
+        </button>
+        {filterOpen && (
+          <div className="report-filter-grid">
+            <label>
+              ค้นหาโดย
+              <select value={searchMode} onChange={(e) => setSearchMode(e.target.value)}>
+                <option value="all">เลขบิล + สินค้า</option>
+                <option value="bill">เลขบิล</option>
+                <option value="product">Barcode + สินค้า</option>
+              </select>
+            </label>
+            <label>
+              วันที่เริ่มต้น
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </label>
+            <label>
+              วันที่สิ้นสุด
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </label>
+            {(role === "Admin" || role === "Audit") && (
+              <label>
+                สาขา
+                <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)}>
+                  <option value="">ทุกสาขา</option>
+                  {branchOptions.map((branch, index) => <option key={index} value={branch}>{branch}</option>)}
+                </select>
+              </label>
+            )}
+            <label>
+              สถานะ
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="">ทุกสถานะ</option>
+                {statusOptions.map((status, index) => <option key={index} value={status}>{status}</option>)}
+              </select>
+            </label>
+            <button type="button" className="report-clear-button" onClick={clearSearch}>ล้างค่า</button>
+          </div>
         )}
       </div>
 
@@ -114,13 +207,16 @@ export default function HistoryPage(props) {
         const billNet = bill.reduce((sum, item) => sum + numberField(item, fieldNames.netTotal), 0);
         const billDiscount = billBefore - billNet;
         return (
-          <section className="bill-card sale-history-card" key={billNo || index}>
-            <div className="bill-head">
-              <div className="bill-meta">
+          <section className="report-bill-card" key={billNo || index}>
+            <div className="report-bill-head">
+              <span className="report-row-icon"><IconBag /></span>
+              <div className="report-bill-meta">
                 <strong>เลขบิล : {billNo}</strong>
-                <div>วันที่ : {formatDate(getField(first, fieldNames.date))}</div>
-                <div>สาขา : {getField(first, fieldNames.branch)}</div>
-                <div>พนักงาน : {getField(first, fieldNames.employee)}</div>
+                <div className="report-bill-sub">
+                  <span>วันที่ : {formatDate(getField(first, fieldNames.date))}</span>
+                  <span>สาขา : {getField(first, fieldNames.branch)}</span>
+                  <span>พนักงาน : {getField(first, fieldNames.employee)}</span>
+                </div>
               </div>
               <div className="bill-actions">
                 <button style={printBtn} onClick={() => reprintBill(bill)}>Reprint</button>
@@ -155,13 +251,13 @@ export default function HistoryPage(props) {
                         <td>{row.soldQty}</td>
                         <td>{row.freeQty}</td>
                         <td>{row.totalQty}</td>
-                        <td>{numberField(item, ["ราคา", "เธฃเธฒเธเธฒ"]).toFixed(2)}</td>
+                        <td>{numberField(item, ["ราคา", "เธฃเธฒเธเธฒ", "เน€เธเธเน€เธเธ’เน€เธยเน€เธเธ’"]).toFixed(2)}</td>
                         <td>{formatPromo(item)}</td>
                         <td>{numberField(item, fieldNames.discountPercent) > 0 ? numberField(item, fieldNames.discountPercent) + "%" : "-"}</td>
                         <td>{row.beforeDiscount.toFixed(2)}</td>
-                        <td>{row.discountBaht.toFixed(2)}</td>
+                        <td className={row.discountBaht < 0 ? "negative-number" : ""}>{row.discountBaht.toFixed(2)}</td>
                         <td>{row.netTotal.toFixed(2)}</td>
-                        <td>{getField(item, fieldNames.status)}</td>
+                        <td><span className={isCanceledStatus(getField(item, fieldNames.status)) ? "status-pill muted" : "status-pill success"}>{getField(item, fieldNames.status)}</span></td>
                       </tr>
                     );
                   })}
@@ -170,7 +266,7 @@ export default function HistoryPage(props) {
                   <tr>
                     <td colSpan="8">รวมบิล</td>
                     <td>{billBefore.toFixed(2)}</td>
-                    <td>{billDiscount.toFixed(2)}</td>
+                    <td className={billDiscount < 0 ? "negative-number" : ""}>{billDiscount.toFixed(2)}</td>
                     <td>{billNet.toFixed(2)}</td>
                     <td></td>
                   </tr>

@@ -217,7 +217,6 @@ export default function AuditLogPage({ auditLogs, systemSettings }) {
           <IconSearch />
           <input placeholder="ค้นหา" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <button type="button" className="report-search-button" onClick={() => setPage(1)}><IconSearch />ค้นหา</button>
       </div>
 
       <div className="report-filter-card">

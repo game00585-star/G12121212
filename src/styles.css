@@ -1468,13 +1468,12 @@ th button {
 .report-icon, .report-row-icon { display: grid; place-items: center; flex: 0 0 auto; border-radius: 18px; background: #eaf2ff; color: #2563eb; }
 .report-icon { width: 56px; height: 56px; }
 .report-row-icon { width: 46px; height: 46px; border-radius: 999px; }
-.report-icon svg, .report-row-icon svg, .report-search-box svg, .report-search-button svg, .report-filter-title svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.report-icon svg, .report-row-icon svg, .report-search-box svg, .report-filter-title svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .excel-button { min-height: 44px; border-radius: 10px !important; background: #16a34a !important; }
-.report-search-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 1fr); gap: 14px; margin-bottom: 16px; }
+.report-search-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-bottom: 16px; }
 .report-search-box { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 18px; border: 1px solid #dbe3ef; border-radius: 10px; color: #64748b; background: #fff; box-shadow: inset 0 1px 2px rgba(15,23,42,.03); }
 .report-search-box input { width: 100%; border: 0; outline: 0; font-size: 17px; font-weight: 400; color: #0f172a; background: transparent; }
 .report-search-box input::placeholder { color: #8a94a6; font-weight: 400; }
-.report-search-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; border: 0; border-radius: 10px; background: #dc2626; color: #fff; font-size: 17px; font-weight: 900; cursor: pointer; box-shadow: 0 8px 18px rgba(220, 38, 38, .18); }
 .report-filter-card { padding: 16px 18px 18px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; box-shadow: 0 8px 22px rgba(15, 23, 42, .05); margin-bottom: 18px; }
 .report-filter-title { width: 100%; display: flex; align-items: center; gap: 10px; padding: 0; border: 0; background: transparent; color: #0f172a; font-size: 20px; font-weight: 900; cursor: pointer; text-align: left; }
 .report-filter-title svg { color: #2563eb; }
@@ -1499,6 +1498,79 @@ th button {
 .audit-table th { background: #edf5ff !important; }
 .audit-table tbody tr:nth-child(even) { background: #f8fafc; }
 .checkout-jump-button { white-space: nowrap; }
+.pos-category-panel {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.pos-category-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  margin-bottom: 10px;
+  padding: 0 12px;
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  color: #64748b;
+  font-weight: 800;
+}
+
+.pos-category-strip {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.pos-category-button {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  gap: 5px;
+  width: 88px;
+  min-height: 68px;
+  padding: 8px 6px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: #fff;
+  color: #0f172a;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+}
+
+.pos-category-button:hover {
+  border-color: #dbe3ef;
+  background: #f8fafc;
+}
+
+.pos-category-button.active {
+  border-color: #16a34a;
+  background: #ecfdf5;
+  color: #15803d;
+  box-shadow: 0 8px 18px rgba(22, 163, 74, .12);
+}
+
+.pos-category-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  background: #eefdf3;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.pos-category-button.active .pos-category-icon {
+  background: #dcfce7;
+}
 .bill-actions, .summary-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
 .bill-actions button, .summary-actions button { width: auto !important; }
 @media (max-width: 1180px) { .pos-shell { grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); } }
@@ -1635,6 +1707,16 @@ th button {
 }
 
 @media (max-width: 640px) {
+  .pos-category-panel {
+    padding: 10px;
+  }
+
+  .pos-category-button {
+    width: 78px;
+    min-height: 64px;
+    font-size: 10px;
+  }
+
   .line-add-button {
     width: 32px !important;
     min-width: 32px !important;

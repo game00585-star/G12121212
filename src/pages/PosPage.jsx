@@ -9,18 +9,45 @@ const numberValue = (value) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const POS_CATEGORIES = [
+  { name: "ไม่คิด", icon: "□" },
+  { name: "เนื้อหมูสด", icon: "🥩" },
+  { name: "เนื้อไก่สด", icon: "🍗" },
+  { name: "เนื้อวัว/เนื้อหมู แช่แข็ง", icon: "🧊" },
+  { name: "ไข่ ไข่แปรรูป", icon: "🥚" },
+  { name: "เนื้อเป็ด/เนื้อไก่ แช่แข็ง", icon: "❄️" },
+  { name: "อาหารทะเลสด", icon: "🦐" },
+  { name: "เนื้อหมูแปรรูป+ตักขาย", icon: "🥓" },
+  { name: "อาหารแช่แข็ง", icon: "🧊" },
+  { name: "หมูแช่แข็งเทขาย", icon: "🍖" },
+  { name: "อาหารแช่เย็น", icon: "🥗" },
+  { name: "Dry Grocery", icon: "🛒" },
+  { name: "Household", icon: "🧴" },
+  { name: "ผักสด", icon: "🥬" },
+  { name: "เครื่องดื่ม", icon: "🥤" },
+];
+
+const getProductCategoryText = (item) => `${item.category || ""} ${item.categoryType || ""}`.toLowerCase();
+
 export default function PosPage(props) {
   const { searchInputRef, scan, setScan, setSearch, search, products, setSelectedItem, setSellPrice, setModalQty, selectedItem, sellPrice, modalQty, discountPercent, setDiscountPercent, promoType, setPromoType, buyQty, setBuyQty, freeQty, setFreeQty, addItemToCart, cart, total, cashInputRef, cash, setCash, change, printReceipt } = props;
   const [scannerOpen, setScannerOpen] = React.useState(false);
   const [scannerError, setScannerError] = React.useState("");
+  const [activeCategory, setActiveCategory] = React.useState("");
   const html5QrCodeRef = React.useRef(null);
   const paymentRef = React.useRef(null);
 
   const filteredProducts = React.useMemo(() => {
     const keyword = String(search || "").toLowerCase().trim();
-    if (!keyword) return products.slice(0, 80);
-    return products.filter((item) => String(item.name || "").toLowerCase().includes(keyword) || String(item.barcode || "").toLowerCase().includes(keyword) || String(item.category || "").toLowerCase().includes(keyword)).slice(0, 120);
-  }, [products, search]);
+    const category = String(activeCategory || "").toLowerCase().trim();
+    if (!keyword && !category) return products.slice(0, 80);
+    return products.filter((item) => {
+      const itemCategory = getProductCategoryText(item);
+      const matchesCategory = !category || itemCategory.includes(category);
+      const matchesKeyword = !keyword || String(item.name || "").toLowerCase().includes(keyword) || String(item.barcode || "").toLowerCase().includes(keyword) || itemCategory.includes(keyword);
+      return matchesCategory && matchesKeyword;
+    }).slice(0, 120);
+  }, [activeCategory, products, search]);
 
   const selectProduct = React.useCallback((item) => {
     setSelectedItem(item);
@@ -75,6 +102,9 @@ export default function PosPage(props) {
   };
 
   const submitManualBarcode = () => handleBarcodeValue(scan);
+  const handleCategoryClick = (categoryName) => {
+    setActiveCategory((current) => current === categoryName ? "" : categoryName);
+  };
   const scrollToPayment = () => {
     paymentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     setTimeout(() => cashInputRef.current?.focus(), 350);
@@ -99,6 +129,17 @@ export default function PosPage(props) {
       <section className="pos-products-panel">
         <div className="pos-section-head"><div><p className="pos-eyebrow">D-FARM POS</p><h2>ขายสินค้า</h2><div className="pos-user-line">เลือกสินค้า / ค้นหาบาร์โค้ด</div></div><button className="scan-button" type="button" onClick={() => setScannerOpen(true)}>สแกนบาร์โค้ด</button></div>
         <div className="pos-search-row"><input ref={searchInputRef} placeholder="ค้นหาสินค้า / ชื่อสินค้า / บาร์โค้ด" value={scan} onChange={(e) => handleSearchChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submitManualBarcode(); }} className="pos-search-input" /><button className="barcode-button checkout-jump-button" type="button" onClick={scrollToPayment}>คิดเงิน</button></div>
+        <div className="pos-category-panel">
+          <div className="pos-category-search"><span aria-hidden="true">⌕</span><span>{activeCategory || "ค้นหาหมวดสินค้า"}</span></div>
+          <div className="pos-category-strip" aria-label="หมวดสินค้า">
+            {POS_CATEGORIES.map((category) => (
+              <button key={category.name} type="button" className={`pos-category-button${activeCategory === category.name ? " active" : ""}`} onClick={() => handleCategoryClick(category.name)}>
+                <span className="pos-category-icon" aria-hidden="true">{category.icon}</span>
+                <span>{category.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="pos-line-table-wrap"><table className="pos-line-table"><thead><tr><th>เพิ่ม</th><th>Barcode</th><th>สินค้า</th><th>หน่วย</th><th>ราคา</th></tr></thead><tbody>{filteredProducts.length === 0 ? <tr><td colSpan="5" className="empty-state">ไม่พบสินค้า</td></tr> : filteredProducts.map((item, index) => <tr key={item.id || item.barcode || index} onClick={() => selectProduct(item)}><td><button className="line-add-button" type="button" onClick={(event) => { event.stopPropagation(); selectProduct(item); }}>+</button></td><td>{item.barcode || "-"}</td><td className="line-product-name">{item.name || "ไม่ระบุชื่อสินค้า"}</td><td>{item.unit || "-"}</td><td>{money(item.price)}</td></tr>)}</tbody></table></div>
       </section>
       <aside className="cart-panel"><div className="cart-head"><div className="cart-title-group"><span className="cart-head-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h2l2 10h9l2-7H7" /><path d="M9 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" /><path d="M17 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" /></svg></span><div><p className="pos-eyebrow">ตะกร้าสินค้า</p><h2>{cart.length} รายการ</h2></div></div><div className="cart-total-chip">{money(total)}</div></div><div className="cart-list">{cart.length === 0 ? <div className="empty-cart"><div className="empty-cart-icon" aria-hidden="true">□</div><span>ยังไม่มีสินค้าในตะกร้า</span></div> : cart.map((item, index) => <div className="cart-item" key={index}><div className="cart-info"><div className="cart-name">{item.name}</div><div className="cart-sub">{item.promoText && item.promoText !== "-" ? item.promoText.replace("+", " แถม ") : "ปกติ"}</div><div className="cart-sub">ขายจริง {item.qty || 0} / แถม {item.freeQty || 0} / รวม {item.totalQty || item.qty}</div></div><div className="cart-price">{money(item.total)}</div></div>)}</div><div className="payment-box" ref={paymentRef}><div className="total-row"><span>รวมสุทธิ</span><strong>{money(total)}</strong></div><input ref={cashInputRef} placeholder="รับเงิน" value={cash} onChange={(e) => { const value = e.target.value; if (value === "") return setCash(""); if (!/^\d*\.?\d*$/.test(value)) return; setCash(value); }} className="cash-input" /><div className="change-row"><span>เงินทอน</span><strong>{money(change > 0 ? change : 0)}</strong></div><button className="checkout-button" onClick={printReceipt} type="button"><span aria-hidden="true">▰</span>จบบิล (ชำระเงิน)</button></div></aside>

@@ -135,7 +135,6 @@ export default function HistoryPage(props) {
           <IconSearch />
           <input placeholder="ค้นหาเลขบิล / ชื่อลูกค้า / Barcode / สินค้า" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} />
         </div>
-        <button type="button" className="report-search-button" onClick={() => setPage(1)}><IconSearch />ค้นหา</button>
       </div>
 
       <div className="report-filter-card">

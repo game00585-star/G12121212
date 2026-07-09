@@ -1681,6 +1681,54 @@ export default function App() {
       alert("Export Summary ไม่สำเร็จ");
     }
   };
+
+  const exportAuditLogsJson = () => {
+    try {
+      const payload = JSON.stringify(auditLogs, null, 2);
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `audit-logs-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      writeAuditLog({ action: "EXPORT_AUDIT_LOG_BACKUP", targetType: "auditLogs", newData: { rows: auditLogs.length } });
+    } catch (err) {
+      console.log(err);
+      alert("Export Audit Log JSON ไม่สำเร็จ");
+    }
+  };
+
+  const importAuditLogsJson = async (records) => {
+    const rows = Array.isArray(records) ? records : records?.auditLogs;
+    if (!Array.isArray(rows)) {
+      alert("ไฟล์ JSON ต้องเป็นรายการ Audit Log");
+      return;
+    }
+
+    try {
+      let imported = 0;
+      for (const record of rows) {
+        const auditLogId = record.auditLogId || record.id || createClientId("audit_backup");
+        await setDoc(doc(db, "auditLogs", String(auditLogId)), {
+          ...record,
+          auditLogId: String(auditLogId),
+          importedAt: new Date().toISOString(),
+        }, { merge: true });
+        imported += 1;
+      }
+
+      await writeAuditLog({ action: "IMPORT_AUDIT_LOG_BACKUP", targetType: "auditLogs", newData: { rows: imported } });
+      await loadAuditLogs();
+      alert(`Import Audit Log JSON สำเร็จ ${imported} รายการ`);
+    } catch (err) {
+      console.log(err);
+      alert("Import Audit Log JSON ไม่สำเร็จ");
+    }
+  };
+
   if (!isLogin) {
     return (
       <LoginPage
@@ -1813,7 +1861,11 @@ export default function App() {
         />
       )}
       {page === "audit" && (role === "Admin" || role === "Audit") && (
-        <AuditLogPage auditLogs={auditLogs} />
+        <AuditLogPage
+          auditLogs={auditLogs}
+          exportAuditLogsJson={exportAuditLogsJson}
+          importAuditLogsJson={importAuditLogsJson}
+        />
       )}
 
     </div>

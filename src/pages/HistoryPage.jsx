@@ -53,7 +53,6 @@ function billSearchText(item) {
     getField(item, fieldNames.barcode),
     getField(item, fieldNames.product),
     formatPromo(item),
-    getField(item, fieldNames.status),
     row.soldQty,
     row.freeQty,
     row.totalQty,
@@ -70,8 +69,6 @@ export default function HistoryPage(props) {
     approveCancelBill, reprintBill, systemSettings,
   } = props;
   const [page, setPage] = React.useState(1);
-  const [searchMode, setSearchMode] = React.useState("all");
-  const [statusFilter, setStatusFilter] = React.useState("");
   const [filterOpen, setFilterOpen] = React.useState(true);
   const pageSize = Math.max(5, Number(systemSettings?.pageSize || 30));
   const rowHeight = Number(systemSettings?.rowHeight || 56);
@@ -80,11 +77,6 @@ export default function HistoryPage(props) {
 
   const branchOptions = React.useMemo(() => (
     [...new Set(salesHistory.map((item) => getField(item, fieldNames.branch)))]
-      .filter(Boolean)
-  ), [salesHistory]);
-
-  const statusOptions = React.useMemo(() => (
-    [...new Set(salesHistory.map((item) => getField(item, fieldNames.status)))]
       .filter(Boolean)
   ), [salesHistory]);
 
@@ -97,18 +89,12 @@ export default function HistoryPage(props) {
       const rawDate = getField(item, fieldNames.date);
       const itemDate = rawDate ? new Date(rawDate) : new Date();
       const branch = getField(item, fieldNames.branch);
-      const status = getField(item, fieldNames.status);
       const startOk = startDate === "" || itemDate >= new Date(startDate);
       const endOk = endDate === "" || itemDate <= new Date(endDate + " 23:59:59");
       const branchOk = role === "Admin" || role === "Audit" ? branchFilter === "" || branch === branchFilter : branch === currentUser?.branch;
-      const statusOk = statusFilter === "" || status === statusFilter;
-      const searchSource = searchMode === "bill"
-        ? billNo
-        : searchMode === "product"
-          ? `${barcode} ${product}`
-          : billSearchText(item);
+      const searchSource = billSearchText(item);
       const searchOk = searchText === "" || cleanText(searchSource).includes(searchText);
-      return searchOk && startOk && endOk && branchOk && statusOk;
+      return searchOk && startOk && endOk && branchOk;
     }).reduce((acc, item) => {
       const billNo = getField(item, fieldNames.billNo);
       if (!acc[billNo]) acc[billNo] = [];
@@ -116,21 +102,19 @@ export default function HistoryPage(props) {
       return acc;
     }, {});
     return Object.values(grouped).reverse();
-  }, [branchFilter, currentUser?.branch, endDate, historySearch, role, salesHistory, searchMode, startDate, statusFilter]);
+  }, [branchFilter, currentUser?.branch, endDate, historySearch, role, salesHistory, startDate]);
 
   const totalPages = Math.max(1, Math.ceil(bills.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const pageBills = bills.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-  React.useEffect(() => setPage(1), [historySearch, startDate, endDate, branchFilter, searchMode, statusFilter, pageSize]);
+  React.useEffect(() => setPage(1), [historySearch, startDate, endDate, branchFilter, pageSize]);
 
   const clearSearch = () => {
     setHistorySearch("");
-    setSearchMode("all");
     setStartDate("");
     setEndDate("");
     setBranchFilter("");
-    setStatusFilter("");
   };
 
   return (
@@ -163,14 +147,6 @@ export default function HistoryPage(props) {
         {filterOpen && (
           <div className="report-filter-grid">
             <label>
-              ค้นหาโดย
-              <select value={searchMode} onChange={(e) => setSearchMode(e.target.value)}>
-                <option value="all">เลขบิล + สินค้า</option>
-                <option value="bill">เลขบิล</option>
-                <option value="product">Barcode + สินค้า</option>
-              </select>
-            </label>
-            <label>
               วันที่เริ่มต้น
               <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </label>
@@ -187,13 +163,6 @@ export default function HistoryPage(props) {
                 </select>
               </label>
             )}
-            <label>
-              สถานะ
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                <option value="">ทุกสถานะ</option>
-                {statusOptions.map((status, index) => <option key={index} value={status}>{status}</option>)}
-              </select>
-            </label>
             <button type="button" className="report-clear-button" onClick={clearSearch}>ล้างค่า</button>
           </div>
         )}
@@ -238,7 +207,6 @@ export default function HistoryPage(props) {
                     <th>รวมก่อนลด</th>
                     <th>ส่วนลด (บาท)</th>
                     <th>รวมสุทธิ</th>
-                    <th>สถานะ</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -257,7 +225,6 @@ export default function HistoryPage(props) {
                         <td>{row.beforeDiscount.toFixed(2)}</td>
                         <td className={row.discountBaht < 0 ? "negative-number" : ""}>{row.discountBaht.toFixed(2)}</td>
                         <td>{row.netTotal.toFixed(2)}</td>
-                        <td><span className={isCanceledStatus(getField(item, fieldNames.status)) ? "status-pill muted" : "status-pill success"}>{getField(item, fieldNames.status)}</span></td>
                       </tr>
                     );
                   })}
@@ -268,7 +235,6 @@ export default function HistoryPage(props) {
                     <td>{billBefore.toFixed(2)}</td>
                     <td className={billDiscount < 0 ? "negative-number" : ""}>{billDiscount.toFixed(2)}</td>
                     <td>{billNet.toFixed(2)}</td>
-                    <td></td>
                   </tr>
                 </tfoot>
               </table>

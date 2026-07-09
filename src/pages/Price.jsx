@@ -1,8 +1,6 @@
 import React from "react";
 import Pagination from "../components/Pagination";
 
-const PAGE_SIZE = 30;
-
 export default function Price({
   products,
   search,
@@ -13,9 +11,14 @@ export default function Price({
   tableStyle,
   thStyle,
   tdStyle,
+  systemSettings,
 }) {
   const [page, setPage] = React.useState(1);
   const keyword = String(search || "").toLowerCase().trim();
+  const pageSize = Math.max(5, Number(systemSettings?.pageSize || 30));
+  const rowHeight = Number(systemSettings?.rowHeight || 56);
+  const tableWidth = Number(systemSettings?.tableWidth || 1180);
+  const tableHeight = Number(systemSettings?.tableHeight || 620);
   const filteredProducts = React.useMemo(() => {
     return products.filter((item) => {
       if (!keyword) return true;
@@ -26,13 +29,23 @@ export default function Price({
       );
     });
   }, [products, keyword]);
-  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
   const safePage = Math.min(page, totalPages);
-  const pageProducts = filteredProducts.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const pageProducts = filteredProducts.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   React.useEffect(() => {
     setPage(1);
-  }, [search]);
+  }, [search, pageSize]);
+
+  const tableSizeStyle = {
+    ...tableStyle,
+    minWidth: tableWidth,
+    marginTop: 0,
+  };
+  const cellStyle = {
+    ...tdStyle,
+    height: rowHeight,
+  };
 
   return (
     <div style={cardStyle}>
@@ -54,8 +67,8 @@ export default function Price({
         style={inputStyle}
       />
 
-      <div style={{ overflowX: "auto", width: "100%" }}>
-        <table style={tableStyle}>
+      <div style={{ overflow: "auto", width: "100%", maxHeight: tableHeight, marginTop: 16 }}>
+        <table style={tableSizeStyle}>
           <thead>
             <tr>
               <th style={thStyle}>Barcode</th>
@@ -68,11 +81,11 @@ export default function Price({
           <tbody>
             {pageProducts.map((item, index) => (
               <tr key={item.id || item.barcode || index}>
-                <td style={tdStyle}>{item.barcode}</td>
-                <td style={tdStyle}>{item.name}</td>
-                <td style={tdStyle}>{item.unit}</td>
-                <td style={tdStyle}>{item.category}</td>
-                <td style={tdStyle}>{item.categoryType}</td>
+                <td style={cellStyle}>{item.barcode}</td>
+                <td style={cellStyle}>{item.name}</td>
+                <td style={cellStyle}>{item.unit}</td>
+                <td style={cellStyle}>{item.category}</td>
+                <td style={cellStyle}>{item.categoryType}</td>
               </tr>
             ))}
           </tbody>

@@ -107,6 +107,10 @@ export default function AuditLogPage({ auditLogs, systemSettings }) {
   const updateFilter = (name, value) => {
     setFilters((prev) => ({ ...prev, [name]: value }));
   };
+  const auditCellStyle = {
+    ...auditTd,
+    height: rowHeight,
+  };
 
   const clearSearch = () => {
     setSearch("");
@@ -165,14 +169,14 @@ export default function AuditLogPage({ auditLogs, systemSettings }) {
           <tbody>
             {pageLogs.map((log, index) => (
               <tr key={log.id || log.auditLogId || index} style={{ background: index % 2 === 0 ? "#ffffff" : "#f8fafc", minHeight: rowHeight }}>
-                <td style={{ ...auditTd, height: rowHeight }}>{formatDate(log.createdAt)}</td>
-                <td style={{ ...auditTd, fontWeight: 800 }}>{log.username || "-"}</td>
-                <td style={auditTd}>{log.role || "-"}</td>
-                <td style={auditTd}>{log.branch || "-"}</td>
-                <td style={auditTd}><span style={{ display: "inline-block", padding: "6px 10px", borderRadius: 999, background: actionColor(log.action), fontWeight: 800 }}>{log.action || "-"}</span></td>
-                <td style={auditTd}>{log.targetType || "-"}</td>
-                <td style={auditTd}>{log.targetId || "-"}</td>
-                <td style={auditTd}>{log.ipAddress || "-"}</td>
+                <td style={auditCellStyle}>{formatDate(log.createdAt)}</td>
+                <td style={{ ...auditCellStyle, fontWeight: 800 }}>{log.username || "-"}</td>
+                <td style={auditCellStyle}>{log.role || "-"}</td>
+                <td style={auditCellStyle}>{log.branch || "-"}</td>
+                <td style={auditCellStyle}><span style={{ display: "inline-block", padding: "6px 10px", borderRadius: 999, background: actionColor(log.action), fontWeight: 800 }}>{log.action || "-"}</span></td>
+                <td style={auditCellStyle}>{log.targetType || "-"}</td>
+                <td style={auditCellStyle}>{log.targetId || "-"}</td>
+                <td style={auditCellStyle}>{log.ipAddress || "-"}</td>
               </tr>
             ))}
             {pageLogs.length === 0 && (

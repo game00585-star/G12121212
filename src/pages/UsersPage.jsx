@@ -41,9 +41,21 @@ export default function UsersPage(props) {
   const [page, setPage] = React.useState(1);
   const [visiblePasswords, setVisiblePasswords] = React.useState({});
   const pageSize = Math.max(5, Number(systemSettings?.pageSize || 30));
+  const rowHeight = Number(systemSettings?.rowHeight || 56);
+  const tableWidth = Number(systemSettings?.tableWidth || 1180);
+  const tableHeight = Number(systemSettings?.tableHeight || 620);
   const totalPages = Math.max(1, Math.ceil(users.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const pageUsers = users.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const userTableStyle = {
+    ...tableStyle,
+    minWidth: tableWidth,
+    marginTop: 0,
+  };
+  const userCellStyle = {
+    ...tdStyle,
+    height: rowHeight,
+  };
 
   return (
     <div style={cardStyle}>
@@ -68,8 +80,8 @@ export default function UsersPage(props) {
         <button style={saveBtn} onClick={addUser}>เพิ่มผู้ใช้</button>
       </div>
 
-      <div style={{ overflowX: "auto", width: "100%" }}>
-        <table style={tableStyle}>
+      <div style={{ overflow: "auto", width: "100%", maxHeight: tableHeight, marginTop: 16 }}>
+        <table style={userTableStyle}>
           <thead>
             <tr>
               <th style={thStyle}>Username</th>
@@ -84,8 +96,8 @@ export default function UsersPage(props) {
           <tbody>
             {pageUsers.map((user, index) => (
               <tr key={user.id || index}>
-                <td style={tdStyle}>{user.username}</td>
-                <td style={tdStyle}>
+                <td style={userCellStyle}>{user.username}</td>
+                <td style={userCellStyle}>
                   <div className="table-password-cell">
                     <span>{visiblePasswords[user.id || index] ? user.password : "********"}</span>
                     <PasswordVisibilityButton
@@ -99,11 +111,11 @@ export default function UsersPage(props) {
                     />
                   </div>
                 </td>
-                <td style={tdStyle}>{user.employeeName}</td>
-                <td style={tdStyle}>{user.branch}</td>
-                <td style={tdStyle}>{user.role}</td>
-                <td style={tdStyle}><button style={printBtn} onClick={() => setResetUserId(user.id)}>Reset</button></td>
-                <td style={tdStyle}><button style={cancelBtn} onClick={() => deleteUser(user.id)}>Delete</button></td>
+                <td style={userCellStyle}>{user.employeeName}</td>
+                <td style={userCellStyle}>{user.branch}</td>
+                <td style={userCellStyle}>{user.role}</td>
+                <td style={userCellStyle}><button style={printBtn} onClick={() => setResetUserId(user.id)}>Reset</button></td>
+                <td style={userCellStyle}><button style={cancelBtn} onClick={() => deleteUser(user.id)}>Delete</button></td>
               </tr>
             ))}
           </tbody>

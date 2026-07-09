@@ -1823,6 +1823,7 @@ export default function App() {
           tableStyle={tableStyle}
           thStyle={thStyle}
           tdStyle={tdStyle}
+          systemSettings={systemSettings}
         />
       )}
       {page === "pos" && (
@@ -1896,6 +1897,7 @@ export default function App() {
           exportDailySummaryPdf={exportDailySummaryPdf}
           printDailySummary={printDailySummary}
           summaryResult={summaryResult}
+          systemSettings={systemSettings}
         />
       )}
       {page === "users" && (role === "Admin" || role === "Audit") && (

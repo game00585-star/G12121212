@@ -1,11 +1,13 @@
 import React from "react";
 import { cardStyle, inputStyle, saveBtn, printBtn, cancelBtn } from "../styles/uiStyles";
+import { DEFAULT_POS_CATEGORIES, normalizePosCategories } from "../utils/posCategories";
 
 const DEFAULT_SETTINGS = {
   rowHeight: 56,
   tableWidth: 1180,
   tableHeight: 620,
   pageSize: 30,
+  categoryMenu: DEFAULT_POS_CATEGORIES,
 };
 
 const pageWrap = {
@@ -84,6 +86,40 @@ const unitText = {
   pointerEvents: "none",
 };
 
+const categoryGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+  gap: 14,
+};
+
+const categoryCardStyle = {
+  display: "grid",
+  gap: 12,
+  padding: 14,
+  border: "1px solid #dbe3ef",
+  borderRadius: 14,
+  background: "#fbfdff",
+};
+
+const categoryPreviewStyle = {
+  display: "grid",
+  placeItems: "center",
+  minHeight: 110,
+  border: "1px solid #dbe3ef",
+  borderRadius: 12,
+  background: "#fff",
+  overflow: "hidden",
+};
+
+function readImageAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 function DownloadIcon() {
   return (
     <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -145,10 +181,18 @@ function SettingControl({ label, helper, value, min, max, step, unit, onChange }
 
 export default function SettingsPage({ systemSettings, setSystemSettings, exportSystemJson, importSystemJson }) {
   const fileInputRef = React.useRef(null);
-  const [draft, setDraft] = React.useState(systemSettings);
+  const [draft, setDraft] = React.useState(() => ({
+    ...DEFAULT_SETTINGS,
+    ...systemSettings,
+    categoryMenu: normalizePosCategories(systemSettings?.categoryMenu),
+  }));
 
   React.useEffect(() => {
-    setDraft(systemSettings);
+    setDraft({
+      ...DEFAULT_SETTINGS,
+      ...systemSettings,
+      categoryMenu: normalizePosCategories(systemSettings?.categoryMenu),
+    });
   }, [systemSettings]);
 
   const updateDraft = (name, value) => {
@@ -158,13 +202,51 @@ export default function SettingsPage({ systemSettings, setSystemSettings, export
     }));
   };
 
+  const updateCategory = (id, changes) => {
+    setDraft((prev) => ({
+      ...prev,
+      categoryMenu: normalizePosCategories(prev.categoryMenu).map((category) => (
+        category.id === id ? { ...category, ...changes } : category
+      )),
+    }));
+  };
+
+  const resetCategory = (id) => {
+    const defaultCategory = DEFAULT_POS_CATEGORIES.find((category) => category.id === id);
+    if (defaultCategory) updateCategory(id, defaultCategory);
+  };
+
+  const clearCategoryImage = (id) => {
+    updateCategory(id, { image: "" });
+  };
+
+  const handleCategoryImage = async (id, event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("กรุณาเลือกไฟล์รูปภาพ");
+      event.target.value = "";
+      return;
+    }
+    const image = await readImageAsDataUrl(file);
+    updateCategory(id, { image });
+    event.target.value = "";
+  };
+
   const saveSettings = () => {
-    setSystemSettings(draft);
+    setSystemSettings({
+      ...draft,
+      categoryMenu: normalizePosCategories(draft.categoryMenu),
+    });
   };
 
   const resetSettings = () => {
-    setDraft(DEFAULT_SETTINGS);
-    setSystemSettings(DEFAULT_SETTINGS);
+    const nextSettings = {
+      ...DEFAULT_SETTINGS,
+      categoryMenu: normalizePosCategories(DEFAULT_SETTINGS.categoryMenu),
+    };
+    setDraft(nextSettings);
+    setSystemSettings(nextSettings);
   };
 
   const handleImportClick = () => {
@@ -224,6 +306,44 @@ export default function SettingsPage({ systemSettings, setSystemSettings, export
             </span>
           </button>
           <input ref={fileInputRef} type="file" accept="application/json,.json" onChange={handleImportFile} style={{ display: "none" }} />
+        </div>
+      </section>
+
+      <section style={sectionCard}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 16 }}>
+          <div>
+            <h3 style={{ margin: 0 }}>ตั้งค่าหมวดสินค้า POS</h3>
+            <p style={{ ...helperStyle, marginBottom: 0 }}>แก้ไขชื่อที่แสดงบนปุ่มหมวดสินค้า และเปลี่ยนรูปภาพของแต่ละหมวดในหน้าขายสินค้า</p>
+          </div>
+        </div>
+        <div style={categoryGridStyle}>
+          {normalizePosCategories(draft.categoryMenu).map((category) => (
+            <div key={category.id} style={categoryCardStyle}>
+              <div style={categoryPreviewStyle}>
+                {category.image ? (
+                  <img src={category.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <span style={{ fontSize: 44, lineHeight: 1 }}>{category.icon}</span>
+                )}
+              </div>
+              <label>
+                <span style={labelStyle}>ชื่อหมวด</span>
+                <input
+                  value={category.name}
+                  onChange={(event) => updateCategory(category.id, { name: event.target.value })}
+                  style={{ ...inputStyle, marginTop: 0 }}
+                />
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                <label style={{ ...printBtn, display: "grid", placeItems: "center", minHeight: 44, margin: 0, cursor: "pointer" }}>
+                  เปลี่ยนรูป
+                  <input type="file" accept="image/*" onChange={(event) => handleCategoryImage(category.id, event)} style={{ display: "none" }} />
+                </label>
+                <button type="button" style={{ ...cancelBtn, minHeight: 44 }} onClick={() => clearCategoryImage(category.id)}>ลบรูป</button>
+              </div>
+              <button type="button" style={{ ...cancelBtn, background: "#fff", color: "#334155", border: "1px solid #cbd5e1", minHeight: 42 }} onClick={() => resetCategory(category.id)}>คืนค่าหมวดนี้</button>
+            </div>
+          ))}
         </div>
       </section>
 

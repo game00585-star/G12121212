@@ -25,6 +25,7 @@ import SummaryPage from "./pages/SummaryPage";
 import UsersPage from "./pages/UsersPage";
 import AuditLogPage from "./pages/AuditLogPage";
 import SettingsPage from "./pages/SettingsPage";
+import { DEFAULT_POS_CATEGORIES, normalizePosCategories } from "./utils/posCategories";
 
 import {
   mainPage,
@@ -44,6 +45,7 @@ const DEFAULT_SYSTEM_SETTINGS = {
   tableWidth: 1180,
   tableHeight: 620,
   pageSize: 30,
+  categoryMenu: DEFAULT_POS_CATEGORIES,
 };
 
 async function getClientSecurityContext() {
@@ -106,9 +108,9 @@ function getSavedAppPage() {
 function getSavedSystemSettings() {
   try {
     const saved = JSON.parse(localStorage.getItem("dfarm_system_settings") || "{}");
-    return { ...DEFAULT_SYSTEM_SETTINGS, ...saved };
+    return { ...DEFAULT_SYSTEM_SETTINGS, ...saved, categoryMenu: normalizePosCategories(saved.categoryMenu) };
   } catch {
-    return DEFAULT_SYSTEM_SETTINGS;
+    return { ...DEFAULT_SYSTEM_SETTINGS, categoryMenu: normalizePosCategories(DEFAULT_SYSTEM_SETTINGS.categoryMenu) };
   }
 }
 
@@ -1858,6 +1860,7 @@ export default function App() {
           setCash={setCash}
           change={change}
           printReceipt={printReceipt}
+          systemSettings={systemSettings}
         />
       )}
       {page === "history" && (

@@ -2,6 +2,7 @@ import React from "react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 
 import { inputStyle, saveBtn, cancelBtn, printBtn, modalOverlay, modalBox } from "../styles/uiStyles";
+import { normalizePosCategories } from "../utils/posCategories";
 
 const money = (value) => "฿" + Number(value || 0).toFixed(2);
 const numberValue = (value) => {
@@ -9,37 +10,21 @@ const numberValue = (value) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const POS_CATEGORIES = [
-  { name: "ไม่คิด", icon: "□" },
-  { name: "เนื้อหมูสด", icon: "🥩" },
-  { name: "เนื้อไก่สด", icon: "🍗" },
-  { name: "เนื้อวัว/เนื้อหมู แช่แข็ง", icon: "🧊", image: "/category-assets/beef-pork-frozen.png" },
-  { name: "ไข่ ไข่แปรรูป", icon: "🥚" },
-  { name: "เนื้อเป็ด/เนื้อไก่ แช่แข็ง", icon: "❄️", image: "/category-assets/duck-chicken-frozen.png" },
-  { name: "อาหารทะเลสด", icon: "🦐" },
-  { name: "เนื้อหมูแปรรูป+ตักขาย", icon: "🥓" },
-  { name: "อาหารแช่แข็ง", icon: "🧊", image: "/category-assets/frozen-food.png" },
-  { name: "หมูแช่แข็งเทขาย", icon: "🍖" },
-  { name: "อาหารแช่เย็น", icon: "🥗", image: "/category-assets/chilled-food.png" },
-  { name: "Dry Grocery", icon: "🛒" },
-  { name: "Household", icon: "🧴" },
-  { name: "ผักสด", icon: "🥬" },
-  { name: "เครื่องดื่ม", icon: "🥤" },
-];
-
 const getProductCategoryText = (item) => `${item.category || ""} ${item.categoryType || ""}`.toLowerCase();
 
 export default function PosPage(props) {
   const { searchInputRef, scan, setScan, setSearch, search, products, setSelectedItem, setSellPrice, setModalQty, selectedItem, sellPrice, modalQty, discountPercent, setDiscountPercent, promoType, setPromoType, buyQty, setBuyQty, freeQty, setFreeQty, addItemToCart, cart, total, cashInputRef, cash, setCash, change, printReceipt } = props;
   const [scannerOpen, setScannerOpen] = React.useState(false);
   const [scannerError, setScannerError] = React.useState("");
+  const categoryMenu = React.useMemo(() => normalizePosCategories(props.systemSettings?.categoryMenu), [props.systemSettings?.categoryMenu]);
   const [activeCategory, setActiveCategory] = React.useState("");
   const html5QrCodeRef = React.useRef(null);
   const paymentRef = React.useRef(null);
 
   const filteredProducts = React.useMemo(() => {
     const keyword = String(search || "").toLowerCase().trim();
-    const category = String(activeCategory || "").toLowerCase().trim();
+    const selectedCategory = categoryMenu.find((categoryItem) => categoryItem.id === activeCategory);
+    const category = String(selectedCategory?.matchText || selectedCategory?.name || "").toLowerCase().trim();
     if (!keyword && !category) return products.slice(0, 80);
     return products.filter((item) => {
       const itemCategory = getProductCategoryText(item);
@@ -47,7 +32,7 @@ export default function PosPage(props) {
       const matchesKeyword = !keyword || String(item.name || "").toLowerCase().includes(keyword) || String(item.barcode || "").toLowerCase().includes(keyword) || itemCategory.includes(keyword);
       return matchesCategory && matchesKeyword;
     }).slice(0, 120);
-  }, [activeCategory, products, search]);
+  }, [activeCategory, categoryMenu, products, search]);
 
   const selectProduct = React.useCallback((item) => {
     setSelectedItem(item);
@@ -131,13 +116,13 @@ export default function PosPage(props) {
         <div className="pos-search-row"><input ref={searchInputRef} placeholder="ค้นหาสินค้า / ชื่อสินค้า / บาร์โค้ด" value={scan} onChange={(e) => handleSearchChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submitManualBarcode(); }} className="pos-search-input" /><button className="barcode-button checkout-jump-button" type="button" onClick={scrollToPayment}>คิดเงิน</button></div>
         <div className="pos-category-panel">
           <div className="pos-category-strip" aria-label="หมวดสินค้า">
-            {POS_CATEGORIES.map((category) => (
-              <button key={category.name} type="button" className={`pos-category-button${activeCategory === category.name ? " active" : ""}`} onClick={() => handleCategoryClick(category.name)}>
-                <span className={`pos-category-art${category.image ? " has-image" : ""}${category.name.includes("แช่") ? " frozen" : ""}`} aria-hidden="true">
+            {categoryMenu.map((category) => (
+              <button key={category.id} type="button" className={`pos-category-button${activeCategory === category.id ? " active" : ""}`} onClick={() => handleCategoryClick(category.id)}>
+                <span className={`pos-category-art${category.image ? " has-image" : ""}${String(category.matchText || category.name || "").includes("แช่") ? " frozen" : ""}`} aria-hidden="true">
                   {category.image ? <img src={category.image} alt="" className="pos-category-image" /> : <>
                     <span className="pos-category-blob" />
                     <span className="pos-category-main-icon">{category.icon}</span>
-                    {category.name.includes("แช่") && <span className="pos-category-snow">❄</span>}
+                    {String(category.matchText || category.name || "").includes("แช่") && <span className="pos-category-snow">❄</span>}
                   </>}
                 </span>
                 <span>{category.name}</span>

@@ -1993,6 +1993,7 @@ export default function App() {
           setSystemSettings={setSystemSettings}
           exportSystemJson={exportSystemJson}
           importSystemJson={importSystemJson}
+          products={products}
         />
       )}
 

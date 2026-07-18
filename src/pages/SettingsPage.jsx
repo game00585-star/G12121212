@@ -1,6 +1,6 @@
 import React from "react";
 import { cardStyle, inputStyle, saveBtn, printBtn, cancelBtn } from "../styles/uiStyles";
-import { DEFAULT_POS_CATEGORIES, normalizePosCategories } from "../utils/posCategories";
+import { DEFAULT_POS_CATEGORIES, mergeProductCategories, normalizePosCategories } from "../utils/posCategories";
 
 const DEFAULT_SETTINGS = {
   rowHeight: 56,
@@ -179,21 +179,21 @@ function SettingControl({ label, helper, value, min, max, step, unit, onChange }
   );
 }
 
-export default function SettingsPage({ systemSettings, setSystemSettings, exportSystemJson, importSystemJson }) {
+export default function SettingsPage({ systemSettings, setSystemSettings, exportSystemJson, importSystemJson, products = [] }) {
   const fileInputRef = React.useRef(null);
   const [draft, setDraft] = React.useState(() => ({
     ...DEFAULT_SETTINGS,
     ...systemSettings,
-    categoryMenu: normalizePosCategories(systemSettings?.categoryMenu),
+    categoryMenu: mergeProductCategories(systemSettings?.categoryMenu, products),
   }));
 
   React.useEffect(() => {
     setDraft({
       ...DEFAULT_SETTINGS,
       ...systemSettings,
-      categoryMenu: normalizePosCategories(systemSettings?.categoryMenu),
+      categoryMenu: mergeProductCategories(systemSettings?.categoryMenu, products),
     });
-  }, [systemSettings]);
+  }, [products, systemSettings]);
 
   const updateDraft = (name, value) => {
     setDraft((prev) => ({

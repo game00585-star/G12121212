@@ -2,7 +2,7 @@ import React from "react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 
 import { inputStyle, saveBtn, cancelBtn, printBtn, modalOverlay, modalBox } from "../styles/uiStyles";
-import { normalizePosCategories } from "../utils/posCategories";
+import { mergeProductCategories } from "../utils/posCategories";
 
 const money = (value) => "฿" + Number(value || 0).toFixed(2);
 const numberValue = (value) => {
@@ -16,7 +16,9 @@ export default function PosPage(props) {
   const { searchInputRef, scan, setScan, setSearch, search, products, setSelectedItem, setSellPrice, setModalQty, selectedItem, sellPrice, modalQty, discountPercent, setDiscountPercent, promoType, setPromoType, buyQty, setBuyQty, freeQty, setFreeQty, addItemToCart, cart, total, cashInputRef, cash, setCash, change, printReceipt } = props;
   const [scannerOpen, setScannerOpen] = React.useState(false);
   const [scannerError, setScannerError] = React.useState("");
-  const categoryMenu = React.useMemo(() => normalizePosCategories(props.systemSettings?.categoryMenu), [props.systemSettings?.categoryMenu]);
+  const categoryMenu = React.useMemo(() => (
+    mergeProductCategories(props.systemSettings?.categoryMenu, products)
+  ), [products, props.systemSettings?.categoryMenu]);
   const [activeCategory, setActiveCategory] = React.useState("");
   const html5QrCodeRef = React.useRef(null);
   const paymentRef = React.useRef(null);

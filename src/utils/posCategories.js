@@ -82,10 +82,7 @@ export function mergeProductCategories(categoryMenu, products) {
   const nextCategories = [...currentCategories];
 
   (Array.isArray(products) ? products : []).forEach((product) => {
-    const labels = [
-      cleanCategoryText(product?.categoryType),
-      cleanCategoryText(product?.category),
-    ].filter(Boolean);
+    const labels = [cleanCategoryText(product?.categoryType)].filter(Boolean);
 
     labels.forEach((label) => {
       const key = label.toLowerCase();

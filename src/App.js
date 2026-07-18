@@ -901,6 +901,20 @@ export default function App() {
       alert("เปลี่ยนรหัสผ่านไม่สำเร็จ");
     }
   };
+
+  const getExcelValue = (row, names) => {
+    const entries = Object.entries(row || {}).map(([key, value]) => [
+      String(key || "").trim().toLowerCase(),
+      value,
+    ]);
+    for (const name of names) {
+      const target = String(name || "").trim().toLowerCase();
+      const found = entries.find(([key]) => key === target);
+      if (found) return found[1];
+    }
+    return "";
+  };
+
   const importExcel = (e) => {
     const files = Array.from(e.target.files || []);
 
@@ -910,6 +924,7 @@ export default function App() {
       products.map((product) => String(product.barcode || "").trim()).filter(Boolean)
     );
     const pendingBarcodes = new Set();
+    let parsedProducts = [];
     let allProducts = [];
     let finished = 0;
     let skipped = 0;
@@ -930,7 +945,19 @@ export default function App() {
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "", raw: false });
 
             jsonData.forEach((item) => {
-              const barcode = String(item["รหัสสินค้า"] || item["เธฃเธซเธฑเธชเธชเธดเธเธเนเธฒ"] || "").trim();
+              const productRow = {
+                barcode: String(getExcelValue(item, ["รหัสสินค้า", "Barcode", "barcode", "บาร์โค้ด", "บาร์โค๊ด"]) || "").trim(),
+                name: String(getExcelValue(item, ["ชื่อสินค้า", "สินค้า", "Product Name", "Product", "name"]) || "").trim(),
+                unit: String(getExcelValue(item, ["หน่วยนับ", "หน่วย", "Unit", "unit"]) || "").trim(),
+                category: String(getExcelValue(item, ["หมวด", "หมวดหมู่", "Category", "category"]) || "").trim(),
+                categoryType: String(getExcelValue(item, ["หมวดสินค้า", "ประเภทสินค้า", "Category Type", "Product Category", "categoryType"]) || "").trim(),
+                price: Number(getExcelValue(item, ["ราคา", "Price", "price"]) || 0),
+              };
+              const barcode = productRow.barcode;
+
+              if (productRow.category || productRow.categoryType) {
+                parsedProducts.push(productRow);
+              }
 
               if (!barcode || existingBarcodes.has(barcode) || pendingBarcodes.has(barcode)) {
                 skipped++;
@@ -938,22 +965,17 @@ export default function App() {
               }
 
               pendingBarcodes.add(barcode);
-              allProducts.push({
-                barcode,
-                name: String(item["ชื่อสินค้า"] || item["เธเธทเนเธญเธชเธดเธเธเนเธฒ"] || "").trim(),
-                unit: String(item["หน่วยนับ"] || item["เธซเธเนเธงเธขเธเธฑเธ"] || "").trim(),
-                category: String(item["หมวด"] || item["เธซเธกเธงเธ”"] || "").trim(),
-                categoryType: String(item["หมวดสินค้า"] || item["เธซเธกเธงเธ”เธชเธดเธเธเนเธฒ"] || "").trim(),
-                price: Number(item["ราคา"] || item["เธฃเธฒเธเธฒ"] || 0),
-              });
+              allProducts.push(productRow);
             });
           });
 
           finished++;
 
           if (finished === files.length) {
+            syncCategoryMenuFromProducts([...products, ...parsedProducts, ...allProducts]);
+
             if (allProducts.length === 0) {
-              alert(`ไม่มีสินค้าใหม่ให้นำเข้า (ข้าม ${skipped} รายการ)`);
+              alert(`ไม่มีสินค้าใหม่ให้นำเข้า (ข้าม ${skipped} รายการ) / อัปเดตหมวดจากไฟล์แล้ว`);
               e.target.value = "";
               return;
             }
@@ -962,7 +984,6 @@ export default function App() {
               await addDoc(collection(db, "products"), item);
             }
 
-            syncCategoryMenuFromProducts([...products, ...allProducts]);
             await loadProducts();
             e.target.value = "";
             alert(`นำเข้าสินค้าใหม่ ${allProducts.length} รายการ / ข้ามซ้ำ ${skipped} รายการ`);

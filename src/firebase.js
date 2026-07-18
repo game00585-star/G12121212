@@ -12,6 +12,7 @@ import {
   updateDoc,
   onSnapshot,
   runTransaction,
+  writeBatch,
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -51,4 +52,5 @@ export {
   updateDoc,
   onSnapshot,
   runTransaction,
+  writeBatch,
 };

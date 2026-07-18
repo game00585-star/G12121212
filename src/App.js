@@ -16,6 +16,7 @@ import {
   deleteDoc,
   updateDoc,
   runTransaction,
+  writeBatch,
 } from "./firebase";
 
 import Price from "./pages/Price";
@@ -422,6 +423,20 @@ export default function App() {
         categoryMenu: nextMenu,
       };
     });
+  };
+
+  const saveProductsBatch = async (productRows) => {
+    const chunkSize = 450;
+    for (let start = 0; start < productRows.length; start += chunkSize) {
+      const chunk = productRows.slice(start, start + chunkSize);
+      const batch = writeBatch(db);
+      chunk.forEach((item) => {
+        const ref = doc(collection(db, "products"));
+        item.id = ref.id;
+        batch.set(ref, item);
+      });
+      await batch.commit();
+    }
   };
 
   const loadProducts = async () => {
@@ -938,7 +953,7 @@ export default function App() {
 
       reader.onload = async (evt) => {
         try {
-          const workbook = XLSX.read(evt.target.result, { type: "binary" });
+          const workbook = XLSX.read(evt.target.result, { type: "array" });
 
           workbook.SheetNames.forEach((sheetName) => {
             const worksheet = workbook.Sheets[sheetName];
@@ -980,11 +995,14 @@ export default function App() {
               return;
             }
 
-            for (const item of allProducts) {
-              await addDoc(collection(db, "products"), item);
-            }
+            await saveProductsBatch(allProducts);
 
-            await loadProducts();
+            setProducts((prev) => {
+              const nextProducts = [...prev, ...allProducts];
+              localStorage.setItem("offline_products", JSON.stringify(nextProducts));
+              return nextProducts;
+            });
+
             e.target.value = "";
             alert(`นำเข้าสินค้าใหม่ ${allProducts.length} รายการ / ข้ามซ้ำ ${skipped} รายการ`);
           }
@@ -994,7 +1012,7 @@ export default function App() {
         }
       };
 
-      reader.readAsBinaryString(file);
+      reader.readAsArrayBuffer(file);
     });
   };
 

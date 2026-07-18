@@ -27,16 +27,79 @@ const CATEGORY_IMAGE_MIGRATIONS = {
   "/category-assets/chilled-food-v2.png": "/category-assets/chilled-food-v3.png",
 };
 
+function cleanCategoryText(value) {
+  return String(value || "").trim();
+}
+
+function makeCategoryId(label) {
+  const text = cleanCategoryText(label).toLowerCase();
+  const slug = text
+    .replace(/[^a-z0-9ก-๙]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+  let hash = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    hash = ((hash << 5) - hash) + text.charCodeAt(index);
+    hash |= 0;
+  }
+  return `excel-${slug || "category"}-${Math.abs(hash)}`;
+}
+
+function normalizeCategoryImage(image) {
+  return CATEGORY_IMAGE_MIGRATIONS[image] || image;
+}
+
 export function normalizePosCategories(categories) {
   const savedList = Array.isArray(categories) ? categories : [];
   const savedById = new Map(savedList.map((category) => [category?.id, category]));
+  const defaultIds = new Set(DEFAULT_POS_CATEGORIES.map((category) => category.id));
 
-  return DEFAULT_POS_CATEGORIES.map((category) => {
+  const defaultCategories = DEFAULT_POS_CATEGORIES.map((category) => {
     const saved = savedById.get(category.id) || {};
     return {
       ...category,
       name: saved.name || category.name,
-      image: Object.prototype.hasOwnProperty.call(saved, "image") ? (CATEGORY_IMAGE_MIGRATIONS[saved.image] || saved.image) : category.image,
+      image: Object.prototype.hasOwnProperty.call(saved, "image") ? normalizeCategoryImage(saved.image) : category.image,
     };
   });
+
+  const extraCategories = savedList
+    .filter((category) => category?.id && !defaultIds.has(category.id))
+    .map((category) => ({
+      id: category.id,
+      name: category.name || category.matchText || "หมวดใหม่",
+      icon: category.icon || "□",
+      image: normalizeCategoryImage(category.image || ""),
+      matchText: category.matchText || category.name || "",
+    }));
+
+  return [...defaultCategories, ...extraCategories];
+}
+
+export function mergeProductCategories(categoryMenu, products) {
+  const currentCategories = normalizePosCategories(categoryMenu);
+  const knownLabels = new Set(currentCategories.map((category) => cleanCategoryText(category.matchText || category.name).toLowerCase()).filter(Boolean));
+  const nextCategories = [...currentCategories];
+
+  (Array.isArray(products) ? products : []).forEach((product) => {
+    const labels = [
+      cleanCategoryText(product?.categoryType),
+      cleanCategoryText(product?.category),
+    ].filter(Boolean);
+
+    labels.forEach((label) => {
+      const key = label.toLowerCase();
+      if (!key || knownLabels.has(key)) return;
+      knownLabels.add(key);
+      nextCategories.push({
+        id: makeCategoryId(label),
+        name: label,
+        icon: "□",
+        image: "",
+        matchText: label,
+      });
+    });
+  });
+
+  return nextCategories;
 }

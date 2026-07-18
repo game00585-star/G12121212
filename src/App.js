@@ -25,7 +25,7 @@ import SummaryPage from "./pages/SummaryPage";
 import UsersPage from "./pages/UsersPage";
 import AuditLogPage from "./pages/AuditLogPage";
 import SettingsPage from "./pages/SettingsPage";
-import { DEFAULT_POS_CATEGORIES, normalizePosCategories } from "./utils/posCategories";
+import { DEFAULT_POS_CATEGORIES, mergeProductCategories, normalizePosCategories } from "./utils/posCategories";
 
 import {
   mainPage,
@@ -412,6 +412,18 @@ export default function App() {
     localStorage.setItem("offline_sales", JSON.stringify(salesHistory));
   }, [salesHistory, offlineLoaded]);
 
+  const syncCategoryMenuFromProducts = (productRows) => {
+    setSystemSettings((prev) => {
+      const currentMenu = normalizePosCategories(prev.categoryMenu);
+      const nextMenu = mergeProductCategories(currentMenu, productRows);
+      if (nextMenu.length === currentMenu.length) return prev;
+      return {
+        ...prev,
+        categoryMenu: nextMenu,
+      };
+    });
+  };
+
   const loadProducts = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, "products"));
@@ -423,6 +435,7 @@ export default function App() {
       }));
 
       setProducts(items);
+      syncCategoryMenuFromProducts(items);
 
       localStorage.setItem("offline_products", JSON.stringify(items));
     } catch (err) {
@@ -432,7 +445,9 @@ export default function App() {
 
       if (offlineData) {
         try {
-          setProducts(JSON.parse(offlineData));
+          const offlineProducts = JSON.parse(offlineData);
+          setProducts(offlineProducts);
+          syncCategoryMenuFromProducts(offlineProducts);
         } catch (e) {
           console.log(e);
         }
@@ -947,6 +962,7 @@ export default function App() {
               await addDoc(collection(db, "products"), item);
             }
 
+            syncCategoryMenuFromProducts([...products, ...allProducts]);
             await loadProducts();
             e.target.value = "";
             alert(`นำเข้าสินค้าใหม่ ${allProducts.length} รายการ / ข้ามซ้ำ ${skipped} รายการ`);

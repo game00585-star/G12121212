@@ -17,8 +17,8 @@ export default function PosPage(props) {
   const [scannerOpen, setScannerOpen] = React.useState(false);
   const [scannerError, setScannerError] = React.useState("");
   const categoryMenu = React.useMemo(() => (
-    mergeProductCategories(props.systemSettings?.categoryMenu, products)
-  ), [products, props.systemSettings?.categoryMenu]);
+    mergeProductCategories(props.systemSettings?.categoryMenu, products, props.systemSettings?.hiddenCategoryLabels)
+  ), [products, props.systemSettings?.categoryMenu, props.systemSettings?.hiddenCategoryLabels]);
   const [activeCategory, setActiveCategory] = React.useState("");
   const html5QrCodeRef = React.useRef(null);
   const paymentRef = React.useRef(null);

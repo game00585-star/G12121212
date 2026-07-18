@@ -76,8 +76,25 @@ export function normalizePosCategories(categories) {
   return [...defaultCategories, ...extraCategories];
 }
 
-export function mergeProductCategories(categoryMenu, products) {
-  const currentCategories = normalizePosCategories(categoryMenu);
+export function normalizeHiddenCategoryLabels(labels) {
+  return Array.from(new Set(
+    (Array.isArray(labels) ? labels : [])
+      .map((label) => cleanCategoryText(label).toLowerCase())
+      .filter(Boolean)
+  ));
+}
+
+function isHiddenCategory(category, hiddenLabels) {
+  const keys = [
+    cleanCategoryText(category?.matchText).toLowerCase(),
+    cleanCategoryText(category?.name).toLowerCase(),
+  ].filter(Boolean);
+  return keys.some((key) => hiddenLabels.includes(key));
+}
+
+export function mergeProductCategories(categoryMenu, products, hiddenCategoryLabels = []) {
+  const hiddenLabels = normalizeHiddenCategoryLabels(hiddenCategoryLabels);
+  const currentCategories = normalizePosCategories(categoryMenu).filter((category) => !isHiddenCategory(category, hiddenLabels));
   const knownLabels = new Set(currentCategories.map((category) => cleanCategoryText(category.matchText || category.name).toLowerCase()).filter(Boolean));
   const nextCategories = [...currentCategories];
 
@@ -86,7 +103,7 @@ export function mergeProductCategories(categoryMenu, products) {
 
     labels.forEach((label) => {
       const key = label.toLowerCase();
-      if (!key || knownLabels.has(key)) return;
+      if (!key || hiddenLabels.includes(key) || knownLabels.has(key)) return;
       knownLabels.add(key);
       nextCategories.push({
         id: makeCategoryId(label),

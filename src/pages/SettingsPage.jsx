@@ -1,6 +1,6 @@
 import React from "react";
 import { cardStyle, inputStyle, saveBtn, printBtn, cancelBtn } from "../styles/uiStyles";
-import { DEFAULT_POS_CATEGORIES, mergeProductCategories, normalizePosCategories } from "../utils/posCategories";
+import { DEFAULT_POS_CATEGORIES, mergeProductCategories, normalizeHiddenCategoryLabels, normalizePosCategories } from "../utils/posCategories";
 
 const DEFAULT_SETTINGS = {
   rowHeight: 56,
@@ -8,6 +8,7 @@ const DEFAULT_SETTINGS = {
   tableHeight: 620,
   pageSize: 30,
   categoryMenu: DEFAULT_POS_CATEGORIES,
+  hiddenCategoryLabels: [],
 };
 
 const pageWrap = {
@@ -184,14 +185,16 @@ export default function SettingsPage({ systemSettings, setSystemSettings, export
   const [draft, setDraft] = React.useState(() => ({
     ...DEFAULT_SETTINGS,
     ...systemSettings,
-    categoryMenu: mergeProductCategories(systemSettings?.categoryMenu, products),
+    hiddenCategoryLabels: normalizeHiddenCategoryLabels(systemSettings?.hiddenCategoryLabels),
+    categoryMenu: mergeProductCategories(systemSettings?.categoryMenu, products, systemSettings?.hiddenCategoryLabels),
   }));
 
   React.useEffect(() => {
     setDraft({
       ...DEFAULT_SETTINGS,
       ...systemSettings,
-      categoryMenu: mergeProductCategories(systemSettings?.categoryMenu, products),
+      hiddenCategoryLabels: normalizeHiddenCategoryLabels(systemSettings?.hiddenCategoryLabels),
+      categoryMenu: mergeProductCategories(systemSettings?.categoryMenu, products, systemSettings?.hiddenCategoryLabels),
     });
   }, [products, systemSettings]);
 
@@ -220,6 +223,19 @@ export default function SettingsPage({ systemSettings, setSystemSettings, export
     updateCategory(id, { image: "" });
   };
 
+  const deleteCategory = (category) => {
+    const label = String(category.matchText || category.name || "").trim();
+    if (!label) return;
+    const ok = window.confirm(`ลบหมวดสินค้า "${category.name}" ออกจากปุ่ม POS ใช่ไหม?`);
+    if (!ok) return;
+    const hiddenKey = label.toLowerCase();
+    setDraft((prev) => ({
+      ...prev,
+      hiddenCategoryLabels: normalizeHiddenCategoryLabels([...(prev.hiddenCategoryLabels || []), hiddenKey]),
+      categoryMenu: normalizePosCategories(prev.categoryMenu).filter((item) => item.id !== category.id),
+    }));
+  };
+
   const handleCategoryImage = async (id, event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -236,17 +252,21 @@ export default function SettingsPage({ systemSettings, setSystemSettings, export
   const saveSettings = () => {
     setSystemSettings({
       ...draft,
+      hiddenCategoryLabels: normalizeHiddenCategoryLabels(draft.hiddenCategoryLabels),
       categoryMenu: normalizePosCategories(draft.categoryMenu),
     });
+    alert("บันทึกการตั้งค่าสำเร็จ");
   };
 
   const resetSettings = () => {
     const nextSettings = {
       ...DEFAULT_SETTINGS,
+      hiddenCategoryLabels: [],
       categoryMenu: normalizePosCategories(DEFAULT_SETTINGS.categoryMenu),
     };
     setDraft(nextSettings);
     setSystemSettings(nextSettings);
+    alert("รีเซ็ตค่าเริ่มต้นสำเร็จ");
   };
 
   const handleImportClick = () => {
@@ -342,6 +362,7 @@ export default function SettingsPage({ systemSettings, setSystemSettings, export
                 <button type="button" style={{ ...cancelBtn, minHeight: 44 }} onClick={() => clearCategoryImage(category.id)}>ลบรูป</button>
               </div>
               <button type="button" style={{ ...cancelBtn, background: "#fff", color: "#334155", border: "1px solid #cbd5e1", minHeight: 42 }} onClick={() => resetCategory(category.id)}>คืนค่าหมวดนี้</button>
+              <button type="button" style={{ ...cancelBtn, minHeight: 42 }} onClick={() => deleteCategory(category)}>ลบหมวดสินค้า</button>
             </div>
           ))}
         </div>

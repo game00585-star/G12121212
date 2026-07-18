@@ -16,6 +16,7 @@ export default function SummaryPage(props) {
     exportSummaryExcel,
     printDailySummary,
     summaryResult,
+    summaryTimeRange,
     systemSettings,
   } = props;
   const [page, setPage] = React.useState(1);
@@ -78,6 +79,8 @@ export default function SummaryPage(props) {
       </div>
 
       <div className="summary-total-grid">
+        <div><span>เวลาเริ่มขาย</span><strong>{summaryTimeRange?.firstSaleTime || "-"}</strong></div>
+        <div><span>เวลาสุดท้ายที่ขาย</span><strong>{summaryTimeRange?.lastSaleTime || "-"}</strong></div>
         <div><span>ขายจริง</span><strong>{totals.soldQty}</strong></div>
         <div><span>แถม</span><strong>{totals.freeQty}</strong></div>
         <div><span>จำนวนรวม</span><strong>{totals.totalQty}</strong></div>

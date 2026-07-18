@@ -47,6 +47,7 @@ const DEFAULT_SYSTEM_SETTINGS = {
   tableHeight: 620,
   pageSize: 30,
   categoryMenu: DEFAULT_POS_CATEGORIES,
+  hiddenCategoryLabels: [],
 };
 
 async function getClientSecurityContext() {
@@ -175,6 +176,38 @@ export default function App() {
     role,
     currentUser,
   });
+
+  const summaryTimeRange = React.useMemo(() => {
+    const saleTimes = salesHistory
+      .filter((item) => {
+        const rawDate = getField(item, fieldNames.date);
+        const itemDate = rawDate ? new Date(rawDate).toISOString().split("T")[0] : "";
+        const itemBranch = getField(item, fieldNames.branch);
+        const status = getField(item, fieldNames.status);
+        const branchOk = role === "Admin" || role === "Audit" ? summaryBranch === "" || itemBranch === summaryBranch : itemBranch === currentUser?.branch;
+        const startOk = summaryStartDate === "" || itemDate >= summaryStartDate;
+        const endOk = summaryEndDate === "" || itemDate <= summaryEndDate;
+        return rawDate && startOk && endOk && branchOk && !isCanceledStatus(status);
+      })
+      .map((item) => new Date(getField(item, fieldNames.date)).getTime())
+      .filter((time) => Number.isFinite(time))
+      .sort((a, b) => a - b);
+
+    const formatSaleTime = (time) => {
+      if (!Number.isFinite(time)) return "-";
+      return new Date(time).toLocaleTimeString("th-TH", {
+        timeZone: "Asia/Bangkok",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+    };
+
+    return {
+      firstSaleTime: saleTimes.length ? formatSaleTime(saleTimes[0]) : "-",
+      lastSaleTime: saleTimes.length ? formatSaleTime(saleTimes[saleTimes.length - 1]) : "-",
+    };
+  }, [currentUser, role, salesHistory, summaryBranch, summaryEndDate, summaryStartDate]);
 
   const [selectedItem, setSelectedItem] = React.useState(null);
 
@@ -1563,6 +1596,7 @@ export default function App() {
       </head><body>
       <h2>สรุปยอดขายรายวัน</h2>
       <div class="meta">วันที่ ${summaryStartDate || "ทั้งหมด"} ถึง ${summaryEndDate || "ทั้งหมด"} | สาขา ${summaryBranch || "ทุกสาขา"}</div>
+      <div class="meta">เวลาเริ่มขาย ${summaryTimeRange.firstSaleTime} | เวลาสุดท้ายที่ขาย ${summaryTimeRange.lastSaleTime}</div>
       <table><thead><tr><th>สาขา</th><th>Barcode</th><th>สินค้า</th><th>โปร</th><th>ขายจริง</th><th>แถม</th><th>จำนวนรวม</th><th>รวมก่อนลด</th><th>ส่วนลด (บาท)</th><th>รวมสุทธิ</th></tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr><td colspan="4">รวมทั้งหมด</td><td>${totals.soldQty}</td><td>${totals.freeQty}</td><td>${totals.totalQty}</td><td>${totals.beforeDiscount.toFixed(2)}</td><td>${totals.discountBaht.toFixed(2)}</td><td>${totals.netTotal.toFixed(2)}</td></tr></tfoot></table>
@@ -1955,6 +1989,7 @@ export default function App() {
           exportDailySummaryPdf={exportDailySummaryPdf}
           printDailySummary={printDailySummary}
           summaryResult={summaryResult}
+          summaryTimeRange={summaryTimeRange}
           systemSettings={systemSettings}
         />
       )}

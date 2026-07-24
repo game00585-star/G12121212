@@ -4,6 +4,179 @@
   box-sizing: border-box;
 }
 
+/* Nest Hub / landscape tablet layout */
+@media (min-width: 901px) and (max-width: 1280px) {
+  #root > div[style] {
+    grid-template-columns: 145px minmax(0, 1fr) !important;
+    gap: 8px !important;
+    padding: 8px !important;
+  }
+
+  aside[style] {
+    padding: 10px !important;
+    border-radius: 12px !important;
+  }
+
+  .sidebar-title {
+    font-size: 16px !important;
+    line-height: 1.18 !important;
+  }
+
+  .sidebar-nav {
+    gap: 7px !important;
+  }
+
+  .sidebar-nav button {
+    min-height: 38px !important;
+    padding: 8px 9px !important;
+    gap: 7px !important;
+    font-size: 12px !important;
+    border-radius: 9px !important;
+  }
+
+  .sidebar-nav svg,
+  .sidebar-footer button svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  .sidebar-footer {
+    gap: 8px !important;
+  }
+
+  .sidebar-footer button {
+    min-height: 36px !important;
+    padding: 8px 9px !important;
+    font-size: 12px !important;
+  }
+
+  .pos-shell {
+    grid-template-columns: minmax(0, 1fr) 240px !important;
+    gap: 10px !important;
+  }
+
+  .pos-products-panel {
+    padding: 14px !important;
+  }
+
+  .pos-section-head {
+    gap: 10px !important;
+  }
+
+  .pos-section-head h2 {
+    font-size: 24px !important;
+  }
+
+  .scan-button {
+    min-width: 140px !important;
+    min-height: 46px !important;
+    padding: 10px 12px !important;
+    font-size: 14px !important;
+  }
+
+  .pos-search-row {
+    grid-template-columns: minmax(0, 1fr) 76px !important;
+    gap: 8px !important;
+    margin-top: 16px !important;
+  }
+
+  .pos-search-input,
+  .cash-input {
+    min-height: 48px !important;
+    padding: 10px 12px !important;
+    font-size: 14px !important;
+  }
+
+  .barcode-button {
+    padding: 10px 8px !important;
+    font-size: 14px !important;
+  }
+
+  .pos-category-button {
+    width: 68px !important;
+    min-width: 68px !important;
+    min-height: 78px !important;
+    padding: 6px 4px !important;
+    font-size: 8px !important;
+  }
+
+  .pos-category-art,
+  .pos-category-art.has-image {
+    width: 42px !important;
+    height: 38px !important;
+  }
+
+  .pos-category-image {
+    width: 42px !important;
+    height: 38px !important;
+    object-fit: contain !important;
+  }
+
+  .pos-line-table {
+    min-width: 560px !important;
+    table-layout: fixed !important;
+  }
+
+  .pos-line-table th,
+  .pos-line-table td {
+    padding: 9px 8px !important;
+    font-size: 12px !important;
+  }
+
+  .pos-line-table th:first-child,
+  .pos-line-table td:first-child {
+    width: 46px !important;
+    min-width: 46px !important;
+  }
+
+  .pos-line-table th:nth-child(2),
+  .pos-line-table td:nth-child(2) {
+    width: 118px !important;
+    min-width: 118px !important;
+    word-break: break-all;
+  }
+
+  .pos-line-table th:nth-child(3),
+  .pos-line-table td:nth-child(3) {
+    width: 250px !important;
+    min-width: 250px !important;
+  }
+
+  .line-product-name {
+    min-width: 0 !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    line-height: 1.35 !important;
+  }
+
+  .cart-head {
+    padding: 12px !important;
+  }
+
+  .cart-head h2 {
+    font-size: 18px !important;
+  }
+
+  .cart-total-chip {
+    min-width: 62px !important;
+    min-height: 40px !important;
+    font-size: 14px !important;
+  }
+
+  .cart-list {
+    padding: 12px !important;
+  }
+
+  .payment-box {
+    padding: 14px 12px !important;
+  }
+
+  .checkout-button {
+    min-height: 50px !important;
+    font-size: 14px !important;
+  }
+}
+
 html,
 body,
 #root {
@@ -1132,7 +1305,7 @@ th button {
 .sidebar-title {
   margin: 0 0 8px;
   color: #fff;
-  font-size: 26px;
+  font-size: 23px;
   line-height: 1.25;
   font-weight: 900;
 }
@@ -1144,7 +1317,7 @@ th button {
 .sidebar-nav button {
   display: flex !important;
   align-items: center;
-  gap: 13px;
+  gap: 10px;
   text-align: left;
   font-weight: 900 !important;
 }
@@ -1157,8 +1330,8 @@ th button {
 
 .sidebar-nav svg,
 .sidebar-footer button svg {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
@@ -1830,7 +2003,53 @@ th button {
   }
 
   .pos-line-table {
-    min-width: 720px !important;
+    min-width: 430px !important;
+    table-layout: fixed !important;
+  }
+
+  .pos-line-table th,
+  .pos-line-table td {
+    padding: 8px 6px !important;
+    font-size: 11px !important;
+  }
+
+  .pos-line-table th:first-child,
+  .pos-line-table td:first-child {
+    width: 44px !important;
+    min-width: 44px !important;
+  }
+
+  .pos-line-table th:nth-child(2),
+  .pos-line-table td:nth-child(2) {
+    width: 96px !important;
+    min-width: 96px !important;
+    word-break: break-all;
+  }
+
+  .pos-line-table th:nth-child(3),
+  .pos-line-table td:nth-child(3) {
+    width: 190px !important;
+    min-width: 190px !important;
+  }
+
+  .pos-line-table th:nth-child(4),
+  .pos-line-table td:nth-child(4) {
+    width: 44px !important;
+    min-width: 44px !important;
+  }
+
+  .pos-line-table th:nth-child(5),
+  .pos-line-table td:nth-child(5) {
+    width: 56px !important;
+    min-width: 56px !important;
+  }
+
+  .line-product-name {
+    min-width: 0 !important;
+    white-space: normal !important;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
   }
 
   .sales-table,

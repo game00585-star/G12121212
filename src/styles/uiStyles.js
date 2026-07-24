@@ -1,7 +1,7 @@
 export const mainPage = {
   display: "grid",
-  gridTemplateColumns: "270px minmax(0,1fr)",
-  gap: 18,
+  gridTemplateColumns: "220px minmax(0,1fr)",
+  gap: 14,
   padding: "clamp(12px,1.4vw,18px)",
   background: "linear-gradient(180deg,#f8fbff 0%,#eef3f8 100%)",
   minHeight: "100vh",
@@ -39,7 +39,7 @@ export const headerStyle = {
   justifyContent: "space-between",
   gap: 18,
   minHeight: "calc(100vh - 40px)",
-  padding: 22,
+  padding: 18,
   background: "radial-gradient(circle at 10% 0%,rgba(18,84,143,.5),transparent 32%), linear-gradient(180deg,#02162a,#06243d 64%,#031525)",
   color: "#fff",
   borderRadius: 16,
@@ -103,14 +103,14 @@ export const tdStyle = {
 };
 
 export const menuBtn = {
-  padding: "14px 18px",
+  padding: "12px 14px",
   background: "rgba(255,255,255,.09)",
   border: "1px solid rgba(255,255,255,.12)",
   color: "#dbeafe",
   borderRadius: 12,
   cursor: "pointer",
   fontWeight: "bold",
-  fontSize: 16,
+  fontSize: 15,
   whiteSpace: "normal",
   maxWidth: "100%",
 };
@@ -145,7 +145,7 @@ export const cancelBtn = {
 };
 
 export const logoutBtn = {
-  padding: "12px 14px",
+  padding: "11px 12px",
   background: "rgba(15,23,42,.35)",
   color: "#fff",
   border: "1px solid rgba(255,255,255,.18)",
